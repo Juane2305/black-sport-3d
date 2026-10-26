@@ -1,0 +1,209 @@
+{
+ "formato": "equirect",
+ "w": 6144,
+ "h": 3072,
+ "exposicion": 0.85,
+ "puntos": [
+  {
+   "id": "vereda",
+   "nombre": "Vereda y portón",
+   "x": 50.3,
+   "y": 1.6,
+   "z": 9.9,
+   "vecinos": [
+    "patio"
+   ]
+  },
+  {
+   "id": "patio",
+   "nombre": "Patio de acceso",
+   "x": 42.0,
+   "y": 1.6,
+   "z": 9.9,
+   "vecinos": [
+    "vereda",
+    "frente",
+    "ingreso"
+   ]
+  },
+  {
+   "id": "frente",
+   "nombre": "Frente vidriado",
+   "x": 34.2,
+   "y": 1.6,
+   "z": 9.9,
+   "vecinos": [
+    "patio",
+    "ingreso",
+    "funcional_e",
+    "sala_e"
+   ]
+  },
+  {
+   "id": "ingreso",
+   "nombre": "Ingreso",
+   "x": 29.8,
+   "y": 1.6,
+   "z": 8.6,
+   "vecinos": [
+    "patio",
+    "frente",
+    "recepcion",
+    "funcional_e",
+    "sala_e",
+    "cintas"
+   ]
+  },
+  {
+   "id": "recepcion",
+   "nombre": "Recepción",
+   "x": 27.3,
+   "y": 1.6,
+   "z": 8.0,
+   "vecinos": [
+    "ingreso",
+    "funcional_e",
+    "sala_e",
+    "cintas",
+    "sala_c"
+   ]
+  },
+  {
+   "id": "funcional_e",
+   "nombre": "Funcional en césped",
+   "x": 27.6,
+   "y": 1.6,
+   "z": 4.2,
+   "vecinos": [
+    "frente",
+    "ingreso",
+    "recepcion",
+    "sala_e",
+    "cintas",
+    "sala_c"
+   ]
+  },
+  {
+   "id": "sala_e",
+   "nombre": "Sala principal",
+   "x": 22.6,
+   "y": 1.6,
+   "z": 5.0,
+   "vecinos": [
+    "frente",
+    "ingreso",
+    "recepcion",
+    "funcional_e",
+    "cintas",
+    "sala_c",
+    "sala_o"
+   ]
+  },
+  {
+   "id": "cintas",
+   "nombre": "Cintas y bicis",
+   "x": 18.5,
+   "y": 1.6,
+   "z": 9.0,
+   "vecinos": [
+    "ingreso",
+    "recepcion",
+    "funcional_e",
+    "sala_e",
+    "sala_c",
+    "maquinas_o",
+    "sala_o",
+    "pesolibre"
+   ]
+  },
+  {
+   "id": "sala_c",
+   "nombre": "Máquinas de la sala",
+   "x": 16.6,
+   "y": 1.6,
+   "z": 4.3,
+   "vecinos": [
+    "recepcion",
+    "funcional_e",
+    "sala_e",
+    "cintas",
+    "sala_o"
+   ]
+  },
+  {
+   "id": "maquinas_o",
+   "nombre": "Pasillo de máquinas",
+   "x": 12.0,
+   "y": 1.6,
+   "z": 8.8,
+   "vecinos": [
+    "cintas",
+    "sala_o",
+    "pesolibre",
+    "funcional_o"
+   ]
+  },
+  {
+   "id": "sala_o",
+   "nombre": "Sala oeste",
+   "x": 11.0,
+   "y": 1.6,
+   "z": 4.6,
+   "vecinos": [
+    "sala_e",
+    "cintas",
+    "sala_c",
+    "maquinas_o",
+    "pesolibre",
+    "funcional_o"
+   ]
+  },
+  {
+   "id": "pesolibre",
+   "nombre": "Peso libre",
+   "x": 7.0,
+   "y": 1.6,
+   "z": 9.5,
+   "vecinos": [
+    "cintas",
+    "maquinas_o",
+    "sala_o",
+    "funcional_o"
+   ]
+  },
+  {
+   "id": "funcional_o",
+   "nombre": "Funcional del fondo",
+   "x": 2.6,
+   "y": 1.6,
+   "z": 5.6,
+   "vecinos": [
+    "maquinas_o",
+    "sala_o",
+    "pesolibre",
+    "bano",
+    "banos_fondo"
+   ]
+  },
+  {
+   "id": "bano",
+   "nombre": "Baño con duchas",
+   "x": 6.6,
+   "y": 1.6,
+   "z": 2.45,
+   "vecinos": [
+    "funcional_o"
+   ]
+  },
+  {
+   "id": "banos_fondo",
+   "nombre": "Baños del fondo",
+   "x": 1.85,
+   "y": 1.6,
+   "z": 9.75,
+   "vecinos": [
+    "funcional_o"
+   ]
+  }
+ ]
+}
