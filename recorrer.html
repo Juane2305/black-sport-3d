@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Black Sport · Recorrer</title>
 <script>
-// Página generada desde recorridos-3d/scripts/demo-recorrer-webgpu/demo_webgpu.html: el código es el mismo, solo cambia
-// este bloque. Para actualizarla, copiar la demo y volver a poner este bloque (ver el LEEME de la demo).
+// Página generada desde recorridos-3d/scripts/demo-recorrer-webgpu/demo_webgpu.html con sitio/armar_pagina.py:
+// el código es el mismo, solo cambia este bloque. Para actualizarla, volver a correr ese script (ver el LEEME de la demo).
 window.SITIO = {
-  titulo: 'Black Sport · Recorrer',
+  titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  archivos: { colisiones: 'recorrer/colisiones.json', manifiesto: 'recorrer/manifest.json', escena: 'recorrer/escena.glb', luces: 'recorrer/config.json' },
+  version: '202611161344',
+  archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json"},
+  tamanos: {"escena": 8909900, "escena_movil": 2655720, "horneada": 9960704},
 };
 </script>
 <style>
@@ -75,6 +77,7 @@ import * as THREE from 'three';
 import { reflector, float, vec3, vec4, uniform, normalView, normalWorld, normalWorldGeometry, directionToFaceDirection, positionWorld, positionViewDirection, materialColor, materialRoughness, materialReference, cameraViewMatrix, texture, texture3D, BRDF_GGX, pass, vec2 } from 'three/tsl';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const Q = new URLSearchParams(location.search);
 window.nErrores = 0; window.primerosErrores = ''; { const ce = console.error; console.error = (...x) => { window.nErrores++; if (window.nErrores < 4) window.primerosErrores += x.map(String).join(' ').slice(0, 400) + ' || '; ce(...x); }; }
@@ -85,8 +88,19 @@ const falla = (e) => { cargando.textContent = 'No se pudo armar la demo: ' + (e 
 const SITIO = window.SITIO || null;
 const ARCH = Object.assign({ colisiones: 'splat_colisiones.json', manifiesto: 'salida/manifest.json', escena: 'escena.glb', luces: 'config.json' }, SITIO && SITIO.archivos);
 const AJUSTES = !SITIO || Q.get('ajustes') === '1';      // en el sitio, los deslizadores y los cuadros por segundo solo con ?ajustes=1
+if (SITIO) cargando.textContent = 'Cargando el recorrido…';
+const TACTIL = matchMedia('(pointer: coarse)').matches || Q.get('movil') === '1';
+// En el sitio, cada versión pide sus archivos con ?v=…: así una página nueva nunca usa un archivo viejo guardado por el navegador.
+const conV = (u) => SITIO && SITIO.version ? u + (u.includes('?') ? '&' : '?') + 'v=' + SITIO.version : u;
+// Cuánto falta: suma lo que van bajando la escena y la geometría horneada contra su tamaño esperado (SITIO.tamanos, en bytes).
+const tamanos = (SITIO && SITIO.tamanos) || {}, bajado = {}, esperado = {};
+const avance = (clave) => { esperado[clave] = tamanos[clave] || 0; return (e) => {
+  bajado[clave] = e.loaded; const tot = Object.values(esperado).reduce((a, b) => a + b, 0); if (!tot) return;
+  const pct = Math.min(99, Math.round(100 * Object.values(bajado).reduce((a, b) => a + b, 0) / tot));
+  cargando.textContent = `Cargando el recorrido… ${pct} %`;
+}; };
 try {
-const datos = await (await fetch(ARCH.colisiones)).json();
+const datos = await (await fetch(conV(ARCH.colisiones))).json();
 const C = datos.celda;
 const libre = (x, z) => { const i = Math.floor(x / C), j = Math.floor(z / C); return j >= 0 && j < datos.nz && i >= 0 && i < datos.nx && datos.filas[j][i] === '0'; };
 
@@ -104,13 +118,16 @@ const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 3
 camera.rotation.order = 'YXZ';
 
 // ---------- escena: materiales de escena.glb + geometría y luz horneadas en Blender ----------
-const gl = new GLTFLoader(), tl = new THREE.TextureLoader();
-const man = await (await fetch(ARCH.manifiesto)).json();
+const gl = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder), tl = new THREE.TextureLoader();   // la geometría horneada del sitio viene comprimida con meshopt
+const man = await (await fetch(conV(ARCH.manifiesto))).json();
 const enMan = (f) => new URL(f, new URL(ARCH.manifiesto, location.href)).href;     // rutas del manifiesto, relativas a él
-const TACTIL = matchMedia('(pointer: coarse)').matches || Q.get('movil') === '1';
 const archivos = { ...man.atlas, ...(TACTIL && man.atlas_movil ? man.atlas_movil : {}) }; const claves = Object.keys(archivos);
+// En el celular, la escena con texturas de 512 px (escena_movil.glb): con las de 1024 Safari se queda sin memoria.
+const conMovil = TACTIL && ARCH.escena_movil;
 cargando.textContent = SITIO ? 'Cargando el recorrido…' : 'Cargando el gimnasio… (modelos y luz horneada, unos 100 MB)';
-const [base, horneada, ...mapas] = await Promise.all([gl.loadAsync(ARCH.escena), gl.loadAsync(enMan(man.horneada || 'escena_horneada.glb')), ...claves.map((k) => tl.loadAsync(enMan(archivos[k])))]);
+let [base, horneada, ...mapas] = await Promise.all([gl.loadAsync(conV(conMovil ? ARCH.escena_movil : ARCH.escena), avance(conMovil ? 'escena_movil' : 'escena')),
+  gl.loadAsync(conV(enMan(man.horneada || 'escena_horneada.glb')), avance('horneada')), ...claves.map((k) => tl.loadAsync(enMan(archivos[k])))]);
+cargando.textContent = SITIO ? 'Armando el recorrido…' : 'Armando el gimnasio…';
 const atlas = {}; claves.forEach((k, i) => { const t = mapas[i]; t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.channel = 1; t.anisotropy = 8; t.needsUpdate = true; atlas[k] = t; });
 const intensidad = Math.PI / man.codificacion;
 const raiz = base.scene; scene.add(raiz); raiz.updateMatrixWorld(true); horneada.scene.updateMatrixWorld(true);
@@ -144,6 +161,7 @@ horneada.scene.traverse((o) => {
   t.geometry = geo; t.material = conLuz(t.material, atlas[a]); t.userData.horneada = true; nHorneadas++;
 });
 window.horneadas = nHorneadas; window.sinPar = sinPar;
+horneada = base = mapas = null;     // la geometría original (ya copiada a decimales) y lo que guardaba el cargador: libera memoria
 
 // Lo que no se horneó: emisores, vidrio, contexto exterior y espejos
 const emisor = (o, f) => { const c = (o.material.emissive && o.material.emissive.getHex() ? o.material.emissive : o.material.color).clone().multiplyScalar(f); o.material = new THREE.MeshBasicMaterial({ color: c, map: o.material.emissiveMap || o.material.map || null }); };
@@ -276,7 +294,7 @@ function armarCampo(cfg) {
   return { tex, min, tam, info: { luces: nL, celda: +celda.toFixed(2), grilla: [nx, ny, nz], adentro: nAdentro, ms: Math.round(performance.now() - t0), techo: !!techo } };
 }
 let campo = null;
-{ try { campo = armarCampo(await (await fetch(ARCH.luces)).json()); } catch (e) { console.warn('Relieve: no se pudo leer config.json; se usa luz desde arriba', e); } }
+{ try { campo = armarCampo(await (await fetch(conV(ARCH.luces))).json()); } catch (e) { console.warn('Relieve: no se pudo leer config.json; se usa luz desde arriba', e); } }
 window.campoLuz = campo ? campo.info : 'sin config.json: luz desde arriba';
 // Cuánto cambia la luz horneada por el relieve, en cada punto. Ng: la superficie lisa; normalWorld: con el relieve.
 // La dirección se lee 30 cm hacia afuera de la superficie, para no mezclar la luz de los dos lados de una pared.
@@ -463,15 +481,34 @@ if (SITIO) {
   // Si el visor la abrió encima (compu), le avisa y el visor la cierra; si no, cambia de página.
   const dentro = window.parent !== window && (() => { try { return window.parent.location.origin === location.origin; } catch (e) { return false; } })();
   const avisar = (d) => { try { document.exitPointerLock(); } catch (e) {} window.parent.postMessage(d, location.origin); };
-  f360.onclick = (e) => {
-    e.preventDefault(); let mejor = datos.puntos[0], dm = Infinity;
-    for (const p of datos.puntos) { const d = Math.hypot(p.x - pos.x, p.z - pos.z); if (d < dm) { dm = d; mejor = p; } }
-    const g = +(yaw * 180 / Math.PI).toFixed(1), i = +(pitch * 180 / Math.PI).toFixed(1);
-    if (dentro) avisar({ tipo: 'foto360', punto: mejor.id, giro: g, inclinacion: i });
-    else location.href = `${SITIO.volver}?punto=${mejor.id}&giro=${g}&inclinacion=${i}`;
+  // Antes de irse suelta la placa de video, así la página que sigue arranca con la memoria libre (en el celular, si
+  // quedan dos recorridos 3D en memoria, Safari cierra la pestaña).
+  let soltado = false;
+  const soltar = () => {
+    if (soltado) return; soltado = true; renderer.setAnimationLoop(null); renderer.onDeviceLost = () => {};   // la placa se suelta a propósito: sin aviso de error
+    try { renderer.dispose(); } catch (e) {}
+    try { const b = renderer.backend; if (b.device) b.device.destroy(); else if (b.gl) { const x = b.gl.getExtension('WEBGL_lose_context'); if (x) x.loseContext(); } } catch (e) {}
   };
+  addEventListener('pageshow', (e) => { if (e.persisted && soltado) location.reload(); });
+  // Punto de foto más cercano, mirando hacia el mismo lado
+  const destino = () => {
+    let mejor = datos.puntos[0], dm = Infinity;
+    for (const p of datos.puntos) { const d = Math.hypot(p.x - pos.x, p.z - pos.z); if (d < dm) { dm = d; mejor = p; } }
+    return `punto=${mejor.id}&giro=${+(yaw * 180 / Math.PI).toFixed(1)}&inclinacion=${+(pitch * 180 / Math.PI).toFixed(1)}`;
+  };
+  // Compu: el visor abrió Recorrer encima, en un marco; se le avisa y el visor lo cierra.
+  // Celular: el visor se reemplazó por esta página (desde=360) y esta se reemplaza por el visor: nunca hay dos a la vez.
+  const salir = (extra = '') => {
+    const d = destino(); soltar();
+    if (dentro) { const o = Object.fromEntries(new URLSearchParams(d)); avisar(extra ? { tipo: 'creditos' } : { tipo: 'foto360', punto: o.punto, giro: +o.giro, inclinacion: +o.inclinacion }); }
+    else location.replace(`${SITIO.volver}?${d}${extra}`);
+  };
+  // En el celular, el gesto o el botón de atrás también vuelven a la foto 360 (y no a la página anterior al visor).
+  const conAtras = !dentro && Q.get('desde') === '360';
+  if (conAtras) { history.pushState({ recorrer: 1 }, ''); addEventListener('popstate', () => salir(), { once: true }); }
+  f360.onclick = (e) => { e.preventDefault(); if (conAtras) history.back(); else salir(); };
   const cr = document.getElementById('creditos'), vc = document.getElementById('verCreditos'); cr.hidden = false;
-  vc.href = `${SITIO.volver}?info=1`; if (dentro) vc.onclick = (e) => { e.preventDefault(); avisar({ tipo: 'creditos' }); };
+  vc.href = `${SITIO.volver}?info=1`; vc.onclick = (e) => { e.preventDefault(); salir('&info=1'); };
 }
 verMenu();
 cargando.remove(); window.demoLista = true;
