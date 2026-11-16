@@ -257,7 +257,7 @@ const FLOORS = [
   ['epdm', 3.6, 8.76, 10.45, 13], ['epdm', 10.45, 12.5, 24.7, 13],
   ['turf', 24.7, 1.5, 31, 9.2], ['woodFloor', 24.7, 9.2, 31, 13],
   ['wcFloor', 0, 0, 4.5, 1.5], ['wcFloor', 4.5, 0, 9.2, 3.4], ['wcFloor', 0, 8.76, 3.6, 13],
-  ['stones', 31, 1.5, 32, 13], ['concrete', 32, 1.5, 39.3, 6.73], ['concrete', 35.1, 6.73, 38, 8.87],
+  ['blackTurf', 31, 1.5, 32, 13], ['concrete', 32, 1.5, 39.3, 6.73], ['concrete', 35.1, 6.73, 38, 8.87],
   ['path', 32, 8.87, 52, 10.97],
   ['gravel', 32, 6.73, 35.1, 8.87], ['gravel', 38, 6.73, 52, 8.87], ['gravel', 32, 10.97, 52, 13],
   ['sidewalk', 52, -14, 55.5, 28], ['asphalt', 55.5, -14, 66, 28],
@@ -458,6 +458,7 @@ function makeMaterials() {
   floor('woodFloor', TX.woodFloor, null, 2.0, { roughness: 0.5 });
   floor('wcFloor', TX.wcFloor, null, 2.0, { roughness: 0.42 });
   floor('stones', TX.stones, TX.stonesB, 0.8, { roughness: 0.85 });
+  floor('blackTurf', TX.turf, TX.turfB, 0.8, { roughness: 1, color: '#2b2b2b' });   // franja de pasto sintético negro frente a la vidriera
   floor('concrete', TX.concrete, null, 2.0, { roughness: 0.95 });
   floor('path', TX.path, null, 2.0, { roughness: 0.95 });
   floor('gravel', TX.gravel, TX.gravelB, 0.8, { roughness: 0.95 });
@@ -480,7 +481,7 @@ function makeMaterials() {
   add('lightEmit', new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffffff').multiplyScalar(2.6), toneMapped: false }), { cast: false, receive: false });
   add('led', new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff6e8').multiplyScalar(3.2), toneMapped: false }), { cast: false, receive: false });
   add('wash', new THREE.MeshBasicMaterial({ color: '#c9c3b6', map: TX.wash, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), { cast: false, receive: false, transparent: true });
-  add('wcCeil', S({ color: '#232427', roughness: 0.9 }));
+  add('wcCeil', S({ color: '#232427', roughness: 0.9 }), { worldUV: 1.0 });
   for (const k of Object.keys(MIRROR_CUBES)) add(k, S({ color: '#f1f3f4', metalness: 1, roughness: 0.015 }), { cast: false, reflect: true });
   add('locker', S({ map: TX.locker, roughness: 0.55, metalness: 0.35 }), { cast: false });
   add('lockerBody', S({ color: '#25272b', roughness: 0.55, metalness: 0.35 }));
@@ -488,8 +489,12 @@ function makeMaterials() {
   add('blackMetal', S({ color: '#1c1d20', metalness: 0.55, roughness: 0.45 }));
   add('steel', S({ color: '#c4c7cb', metalness: 0.9, roughness: 0.28 }));
   add('padBlack', S({ color: '#141414', roughness: 0.62 }));
-  add('deskBody', S({ color: '#161719', roughness: 0.45 }));
-  add('deskWood', S({ map: TX.woodFloor, color: '#d39a62', roughness: 0.45 }), { worldUV: 1.4 });
+  add('deskBody', S({ color: '#161719', roughness: 0.45 }), { worldUV: 1.0 });   // frente del mostrador: varillado de madera
+  add('deskWood', S({ map: TX.woodFloor, color: '#d39a62', roughness: 0.45 }), { worldUV: 1.4 });   // mesada: mármol gris
+  add('divBody', S({ color: '#161719', roughness: 0.45 }));   // mueble divisor junto al molinete (como antes)
+  add('divTop', S({ map: TX.woodFloor, color: '#d39a62', roughness: 0.45 }), { worldUV: 1.4 });
+  add('brick', S({ color: '#1c1c1e', roughness: 0.6 }), { worldUV: 1.0 });   // paneles de ladrillo 3D detrás de recepción
+  add('stoneWall', S({ color: '#8a6d55', roughness: 0.9 }), { worldUV: 1.0 });   // revestimiento de piedra en tiras (patio)
   add('ceramic', S({ color: '#f2f2f0', roughness: 0.18 }));
   add('basin', S({ color: '#d7d7d3', roughness: 0.22 }));
   add('showerTray', S({ color: '#38393c', roughness: 0.55 }));
@@ -677,12 +682,14 @@ function buildFixtures() {
   B(25.0, 0, 10.42, 28.9, 1.0, 11.16, 'deskBody'); B(24.97, 1.0, 10.39, 28.93, 1.04, 11.19, 'deskWood');
   B(28.1, 0, 11.16, 28.9, 1.0, 12.88, 'deskBody'); B(28.07, 1.0, 11.16, 28.93, 1.04, 12.88, 'deskWood');
   B(25.0, 0.74, 11.16, 28.1, 0.78, 11.75, 'deskWood');
+  B(39.38, 0, 6.805, 52, 1.9, 6.83, 'stoneWall');   // revestimiento de piedra en la medianera derecha del patio, hasta 1,9 m (foto del 16/11)
+  B(25.0, 0, 12.876, 29.4, 2.8, 12.9, 'brick');   // paneles de ladrillo 3D en la pared de atrás del mostrador (foto del 16/11; ancho y alto estimados)
   Col(25.0, 10.42, 28.9, 11.16); Col(28.1, 11.16, 28.9, 12.88); Blob(25.0, 10.42, 28.9, 11.16);
   if (ASSET_PARTS.molinete) { at(26.27, 9.62, Math.PI / 2, () => Asset('molinete')); Col(25.87, 9.22, 26.67, 9.62); Blob(25.87, 9.22, 26.67, 9.62); }
   else { B(25.7, 0, 9.3, 26.84, 0.95, 9.62, 'steel'); B(25.68, 0.95, 9.28, 26.86, 0.99, 9.64, 'blackMetal'); Cyl(26.27, 0.86, 9.68, 0.06, 0.1, 'steel', 'z');
     for (const a of [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3]) { const dx = Math.cos(a) * 0.5, dy = Math.sin(a) * 0.5; Rod([26.27, 0.86, 9.74], [26.27 + dx, 0.86 + dy, 9.74 + 0.12], 0.035, 'steel'); }
     Col(25.7, 9.3, 26.84, 9.62); Blob(25.7, 9.3, 26.84, 9.62); }
-  B(26.67, 0, 9.08, 30.92, 1.0, 9.3, 'deskBody'); B(26.65, 1.0, 9.06, 30.94, 1.04, 9.32, 'deskWood'); Col(26.67, 9.08, 30.92, 9.3); Blob(26.67, 9.08, 30.92, 9.3);
+  B(26.67, 0, 9.08, 30.92, 1.0, 9.3, 'divBody'); B(26.65, 1.0, 9.06, 30.94, 1.04, 9.32, 'divTop'); Col(26.67, 9.08, 30.92, 9.3); Blob(26.67, 9.08, 30.92, 9.3);
   Cyl(30.45, 1.11, 9.19, 0.08, 0.14, 'pot', 'y', 14, 0.09); if (ASSET_PARTS.helecho) at(30.45, 9.19, 2.1, () => Asset('helecho'), { y: 1.17, s: 0.34 });
   B(29.6, 0, 9.34, 30.85, 0.015, 11.15, 'matEntrance'); B(24.72, 0, 9.22, 25.47, 0.015, 10.35, 'matSmall');
   Cyl(25.45, 1.11, 10.78, 0.08, 0.14, 'pot', 'y', 14, 0.09);
@@ -693,7 +700,7 @@ function buildFixtures() {
   // caños de electricidad a la vista
   Rod([9.4, 3.9, 1.63], [30.6, 3.9, 1.63], 0.025, 'pvc'); Rod([3.8, 3.9, 12.87], [30.6, 3.9, 12.87], 0.025, 'pvc');
   for (const x of [12.4, 18.6, 24.8, 29.6]) { Rod([x, 1.25, 1.63], [x, 3.9, 1.63], 0.025, 'pvc'); B(x - 0.05, 1.12, 1.6, x + 0.05, 1.28, 1.66, 'pvc'); }
-  for (const x of [13.5, 19.7, 25.9]) { Rod([x, 1.25, 12.87], [x, 3.9, 12.87], 0.025, 'pvc'); B(x - 0.05, 1.12, 12.84, x + 0.05, 1.28, 12.9, 'pvc'); }
+  for (const x of [13.5, 19.7]) { Rod([x, 1.25, 12.87], [x, 3.9, 12.87], 0.025, 'pvc'); B(x - 0.05, 1.12, 12.84, x + 0.05, 1.28, 12.9, 'pvc'); }
   for (const x of [12.4, 24.8]) Rod([x, 3.9, 1.63], [x, H.eave - 0.1, 1.63], 0.025, 'pvc');
   Rod([0.13, 3.0, 6.3], [0.13, 3.0, 7.7], 0.025, 'pvc'); Rod([0.13, 3.0, 7.0], [0.13, 4.7, 7.0], 0.025, 'pvc');
   // visto en la foto: parlante, pelotas medicinales y pesas rusas sobre la pared derecha
@@ -952,13 +959,24 @@ async function loadAssets() {
 /* Texturas escaneadas (ambientCG, CC0). Se cargan después del primer cuadro; mientras tanto se ven las dibujadas por código.
    tile = metros que cubre una repetición. La goma damero combina Rubber004 con el relieve de cuadros de 10 cm. */
 const TEXSETS = [
-  { keys: ['marble'], file: 'marble016', tile: 1.2, roughness: 1.5, env: 0.55 },
-  { keys: ['wall', 'perim', 'band'], file: 'hormigon', tile: 1.6, roughness: 1.0, env: 0.5 },
-  { keys: ['rubber', 'stones'], file: 'goma', tile: 0.8, roughness: 1.0, color: '#b4b4b4' },
-  { keys: ['turf'], file: 'grass005', tile: 1.4, color: '#7c976f' },
+  // Desde el 16/11/2026, de fotos del gimnasio real (recorridos-3d/scripts/texturas, receta black-sport.json).
+  // tile puede ser [ancho, alto] en metros. Las medidas son estimadas hasta tener las reales.
+  { keys: ['marble'], file: 'marmol_negro', tile: 1.15, env: 0.55 },
+  { keys: ['wall', 'perim', 'band'], file: 'revoque_negro', tile: 0.6, env: 0.5 },
+  { keys: ['rubber'], file: 'placas_salon', tile: 0.5 },
+  { keys: ['blackTurf'], file: 'pasto_negro', tile: 0.8 },
+  { keys: ['turf'], file: 'pasto_real', tile: 0.6 },
+  { keys: ['woodFloor'], file: 'porcelanato_recepcion', tile: 0.75 },
+  { keys: ['wcFloor'], file: 'tablas_bano', tile: 0.77 },
+  { keys: ['wcCeil'], file: 'techo_bano', tile: [0.6, 0.51] },
+  { keys: ['brick'], file: 'ladrillo_3d', tile: [0.368, 0.462] },
+  { keys: ['stoneWall'], file: 'piedra_tiras', tile: [1.39, 1.91] },
+  { keys: ['deskBody'], file: 'varillado', tile: 0.98 },
+  { keys: ['deskWood'], file: 'marmol_gris', tile: 0.64, env: 0.6 },
+  // ambientCG (CC0)
   { keys: ['gravel'], file: 'gravel024', tile: 1.1, color: '#8c8c8c' },
   { keys: ['concrete', 'path', 'sidewalk'], file: 'concrete025', tile: 1.8 },
-  { keys: ['deskWood', 'benchWood'], file: 'wood092', tile: 1.2, roughness: 0.9, color: '#b08660' },
+  { keys: ['benchWood', 'divTop'], file: 'wood092', tile: 1.2, roughness: 0.9, color: '#b08660' },
   { keys: ['roof'], file: 'corrugated009', tile: 1.3, rotate: true, color: '#2f2b28', metalness: 0.25 },
 ];
 const UV_UNIT = { benchWood: 'face', roof: [1.6, 2.0] };   // metros por unidad de UV cuando no salen de worldUV
@@ -974,7 +992,8 @@ function loadTexSets() {
       if (!c) return;
       for (const k of s.keys) {
         const unit = UV_UNIT[k] ?? (META[k] && META[k].worldUV) ?? 1;
-        const rep = unit === 'face' ? [1, 1] : Array.isArray(unit) ? [unit[0] / s.tile, unit[1] / s.tile] : [unit / s.tile, unit / s.tile];
+        const tw = Array.isArray(s.tile) ? s.tile : [s.tile, s.tile];
+        const rep = unit === 'face' ? [1, 1] : Array.isArray(unit) ? [unit[0] / tw[0], unit[1] / tw[1]] : [unit / tw[0], unit / tw[1]];
         const prep = (t) => { if (!t) return null; const x = t.clone(); x.repeat.set(rep[0], rep[1]); if (s.rotate) { x.center.set(0.5, 0.5); x.rotation = Math.PI / 2; } x.needsUpdate = true; return x; };
         forEachMat(k, (m) => { m.map = prep(c); m.normalMap = prep(n); m.roughnessMap = prep(r); m.bumpMap = null; m.roughness = s.roughness ?? 1; if (s.metalness !== undefined) m.metalness = s.metalness; m.color.set(s.color || '#ffffff'); if (s.env) m.envMapIntensity = s.env; m.needsUpdate = true; });
       }
@@ -1776,7 +1795,7 @@ async function init() {
   if (new URLSearchParams(location.search).get('info') === '1') openSheet('info');   // créditos, desde recorrer.html
   const pend = Object.keys(ASSET_DEFS).filter((n) => !ASSET_PARTS[n]);
   if (pend.length) { console.warn('Modelos sin cargar:', pend, ASSET_FAIL); setTimeout(() => toast(`No cargaron ${pend.length} modelos 3D: se ven versiones simples. Detalle en Info.`, 8000), 1200); }
-  loadTexSets(); loadBaked();
+  loadTexSets(); if (new URLSearchParams(location.search).get('horneado') !== '0') loadBaked();   // ?horneado=0: luz en tiempo real (para exportar escena.glb)
   requestAnimationFrame((t) => { last = t; frame(t); });
   window.__bs = { scene, groups, goZone: (id) => goZone(ZONES.find((z) => z.id === id)), setMode, setQuality, setEquip: (v) => { groups.equip.visible = v; refreshColliders(); updateCube(); markDirty(); }, pano: PANO, panoGo, player, info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }) };
 }
