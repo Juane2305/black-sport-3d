@@ -801,7 +801,7 @@ function buildEquipment() {
   if (ASSET_PARTS.cruce_poleas) at(22.9, 2.24, 0, () => Eq('cruce_poleas'))   /* el modelo trae el frente hacia +Z: con π quedaba mirando a la pared */; else at(22.9, 2.55, 0, cableCross);
   if (ASSET_PARTS.dispenser) { at(20.5, 1.6, Math.PI, () => Asset('dispenser')); Col(20.31, 1.6, 20.69, 1.94); Blob(20.31, 1.6, 20.69, 1.94, 0.05); }
   // barra de dominadas y fondos amurada a la pared larga
-  at(10.7, 1.6, 0, () => Eq('barra_dominadas', null, { col: false }), { y: 1.3 });
+  at(10.7, 2.2, 0, () => Eq('barra_dominadas', null, { col: false }), { y: 1.3 });   // las placas de amurar están del lado −Z del modelo: va sin giro y corrida 60 cm, para que queden contra la pared
   // peso libre
   if (ASSET_PARTS.rack) at(8.7, 11.45, 0, halfRack); else at(8.7, 11.35, Math.PI / 2, powerRack);
   at(5.9, 10.05, Math.PI / 2, bancoInclinado); at(5.9, 11.75, Math.PI / 2, bancoRespaldo);
