@@ -798,7 +798,7 @@ function buildEquipment() {
     at(12.4, 6.6, 0, () => Eq('multiestacion')); at(15.15, 6.6, 0.02, () => Eq('press_plano'));
     at(17.9, 6.6, Math.PI, () => Eq('multiestacion')); at(20.55, 6.6, Math.PI - 0.02, () => Eq('press_inclinado'));
   } else [[12.4, 0], [15.0, Math.PI], [17.6, 0], [20.2, Math.PI]].forEach(([x, r]) => at(x, 6.6, r, machine));
-  if (ASSET_PARTS.cruce_poleas) at(22.9, 2.24, Math.PI, () => Eq('cruce_poleas')); else at(22.9, 2.55, 0, cableCross);
+  if (ASSET_PARTS.cruce_poleas) at(22.9, 2.24, 0, () => Eq('cruce_poleas'))   /* el modelo trae el frente hacia +Z: con π quedaba mirando a la pared */; else at(22.9, 2.55, 0, cableCross);
   if (ASSET_PARTS.dispenser) { at(20.5, 1.6, Math.PI, () => Asset('dispenser')); Col(20.31, 1.6, 20.69, 1.94); Blob(20.31, 1.6, 20.69, 1.94, 0.05); }
   // barra de dominadas y fondos amurada a la pared larga
   at(10.7, 1.6, Math.PI, () => Eq('barra_dominadas', null, { col: false }), { y: 1.3 });
@@ -826,7 +826,7 @@ function buildEquipment() {
   if (ASSET_PARTS.toalla) { at(2.0, 3.55, Math.PI / 2 + 0.06, () => Asset('toalla'), { y: 0.46 }); at(3.22, 9.72, Math.PI / 2 - 0.08, () => Asset('toalla'), { y: 0.46 }); }
   else { B(1.83, 0.46, 3.35, 2.16, 0.49, 3.78, 'towel'); B(3.06, 0.46, 9.5, 3.39, 0.485, 9.95, 'towel'); }
   // recepción
-  if (ASSET_PARTS.pc) at(26.35, 11.45, Math.PI, () => Asset('pc'), { y: 0.78 });
+  if (ASSET_PARTS.pc) at(26.35, 11.45, 0, () => Asset('pc'), { y: 0.78 });   // frente hacia +Z: con π la pantalla miraba al público
   at(26.5, 12.1, 0.25, () => Eq('silla_pc', chair, { blob: false }));
   Plane(1.9, 0.48, 26.95, 0.55, 10.405, '-z', 'logo');
   Plane(6.2, 0.97, 31.13, 3.92, 7.25, '+x', 'sign');
