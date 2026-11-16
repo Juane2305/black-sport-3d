@@ -1173,13 +1173,22 @@ let groundMode = 'walk';
 // reflejos y espejos reales. Se abre en el mismo lugar y mirando hacia el mismo lado. El modo Recorrer viejo de esta
 // página queda solo como respaldo si no hay fotos 360. Vista aérea sigue acá.
 // En la compu se abre encima de este visor, que queda cargado y quieto: volver a Foto 360 es instantáneo. En el celular
-// se cambia de página, para no tener dos 3D en memoria a la vez.
+// esta página se reemplaza por recorrer.html (y al volver, al revés): si quedan dos recorridos 3D en memoria, Safari
+// cierra la pestaña ("Ocurrió un problema varias veces", 16/11/2026).
+// RECORRER_V es la versión de recorrer.html (window.SITIO.version, la escribe sitio/armar_pagina.py): va en la dirección
+// para que el navegador no use una copia vieja de la página, y en la precarga de sus archivos.
+const RECORRER_V = '202611161340';
 let marcoRecorrer = null;
 function irARecorrer() {
   if (!PANO.available) { setMode('walk'); return; }
   const g = (player.yaw * 180 / Math.PI).toFixed(1), i = (player.pitch * 180 / Math.PI).toFixed(1);
-  const url = `recorrer.html?cam=${player.x.toFixed(2)},${player.z.toFixed(2)},1.6,${g},${i}`;
-  if (TOUCH) { document.body.classList.add('saliendo'); location.href = url; return; }
+  const url = `recorrer.html?v=${RECORRER_V}&cam=${player.x.toFixed(2)},${player.z.toFixed(2)},1.6,${g},${i}`;
+  if (TOUCH) {
+    document.body.classList.add('saliendo'); precargando = false;
+    try { renderer.forceContextLoss(); } catch (e) {}     // suelta la placa de video antes de que arranque Recorrer
+    location.replace(url + '&desde=360'); return;
+  }
+  precargando = false;
   closeSheet(); keys.clear();
   marcoRecorrer = document.createElement('iframe'); marcoRecorrer.id = 'marco-recorrer'; marcoRecorrer.title = 'Recorrer';
   marcoRecorrer.allow = 'fullscreen'; marcoRecorrer.src = url; document.body.appendChild(marcoRecorrer); marcoRecorrer.focus();
@@ -1194,6 +1203,26 @@ addEventListener('message', (e) => {
   enterPano({ pt, yaw: d.giro * Math.PI / 180, pitch: d.inclinacion * Math.PI / 180, instant: true });
 });
 addEventListener('pageshow', () => document.body.classList.remove('saliendo'));   // al volver con el botón Atrás
+// Mientras se mira la foto 360, baja en segundo plano los archivos de Recorrer (de a uno, con prioridad baja y sin
+// guardarlos en memoria: quedan en la caché del navegador). Así la primera vez Recorrer abre mucho más rápido.
+// Si cambian los archivos de recorrer/ o la versión de three.js de recorrer.html, actualizar esta lista.
+const RECORRER_PRECARGA = {
+  propios: ['recorrer/colisiones.json', 'recorrer/manifest.json', 'recorrer/config.json', 'recorrer/escena_horneada.glb'],
+  compu: ['recorrer/escena.glb'], celular: ['recorrer/escena_movil.glb'],
+  motor: ['build/three.core.js', 'build/three.webgpu.js', 'build/three.tsl.js', 'examples/jsm/loaders/GLTFLoader.js', 'examples/jsm/utils/BufferGeometryUtils.js',
+    'examples/jsm/tsl/display/BloomNode.js', 'examples/jsm/libs/meshopt_decoder.module.js'].map((f) => 'https://cdn.jsdelivr.net/npm/three@0.180.0/' + f),
+};
+let precargando = false;
+async function precargarRecorrer() {
+  if (precargando || marcoRecorrer || !PANO.available || (navigator.connection && navigator.connection.saveData)) return;
+  precargando = true; const t0 = performance.now(); let bytes = 0;
+  const lista = [...[...RECORRER_PRECARGA.propios, ...RECORRER_PRECARGA[TOUCH ? 'celular' : 'compu']].map((f) => `${f}?v=${RECORRER_V}`), ...RECORRER_PRECARGA.motor];
+  for (const u of lista) {
+    if (!precargando) return;            // ya se abrió Recorrer
+    try { const r = await fetch(u, { priority: 'low' }); const rd = r.body.getReader(); for (;;) { const { done, value } = await rd.read(); if (done) break; bytes += value.length; if (!precargando) { rd.cancel(); return; } } } catch (e) {}
+  }
+  precargando = false; window.recorrerPrecargado = { mb: +(bytes / 1048576).toFixed(1), s: +((performance.now() - t0) / 1000).toFixed(1) };
+}
 function modeButtons() { for (const [id, m] of [['#m-pano', 'pano'], ['#m-walk', 'walk'], ['#m-air', 'air']]) $(id).setAttribute('aria-pressed', String(mode === m)); }
 function setMode(m, instant = false) {
   if (m === mode && !instant) return;
@@ -1743,6 +1772,7 @@ async function init() {
   }
   render(); updateMap();
   $('#loading').classList.add('done');
+  setTimeout(precargarRecorrer, TOUCH ? 8000 : 3000);
   if (new URLSearchParams(location.search).get('info') === '1') openSheet('info');   // créditos, desde recorrer.html
   const pend = Object.keys(ASSET_DEFS).filter((n) => !ASSET_PARTS[n]);
   if (pend.length) { console.warn('Modelos sin cargar:', pend, ASSET_FAIL); setTimeout(() => toast(`No cargaron ${pend.length} modelos 3D: se ven versiones simples. Detalle en Info.`, 8000), 1200); }
