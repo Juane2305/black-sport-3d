@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
-<style>:root{color-scheme:dark}html,body{margin:0;background:#0d0e10}[hidden]{display:none!important}</style>
+<style>:root{color-scheme:dark}html,body{margin:0;background:#0d0e10}[hidden]{display:none!important}body.saliendo #stage { opacity: 0.15; transition: opacity 0.25s; }   /* al pasar a recorrer.html */
+#marco-recorrer { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; z-index: 1000; background: #111; }
+</style>
 </head>
 <body>
 <title>Black Sport 3D</title>
@@ -1167,6 +1169,31 @@ function tweenTo(pose, dur, done) { if (REDUCED) dur = 0.01; tween = { p0: camer
 function stepTween(dt) { tween.t += dt / tween.dur; const k = ease(Math.min(1, tween.t)); camera.position.lerpVectors(tween.p0, tween.pos, k); camera.quaternion.slerpQuaternions(tween.q0, tween.quat, k); camera.fov = tween.f0 + (tween.fov - tween.f0) * k; camera.updateProjectionMatrix();
   if (tween.t >= 1) { const d = tween.done; tween = null; d && d(); } }
 let groundMode = 'walk';
+// Recorrer (desde el 16/11/2026) es una página aparte, recorrer.html, con el motor WebGPU, la luz horneada, relieve,
+// reflejos y espejos reales. Se abre en el mismo lugar y mirando hacia el mismo lado. El modo Recorrer viejo de esta
+// página queda solo como respaldo si no hay fotos 360. Vista aérea sigue acá.
+// En la compu se abre encima de este visor, que queda cargado y quieto: volver a Foto 360 es instantáneo. En el celular
+// se cambia de página, para no tener dos 3D en memoria a la vez.
+let marcoRecorrer = null;
+function irARecorrer() {
+  if (!PANO.available) { setMode('walk'); return; }
+  const g = (player.yaw * 180 / Math.PI).toFixed(1), i = (player.pitch * 180 / Math.PI).toFixed(1);
+  const url = `recorrer.html?cam=${player.x.toFixed(2)},${player.z.toFixed(2)},1.6,${g},${i}`;
+  if (TOUCH) { document.body.classList.add('saliendo'); location.href = url; return; }
+  closeSheet(); keys.clear();
+  marcoRecorrer = document.createElement('iframe'); marcoRecorrer.id = 'marco-recorrer'; marcoRecorrer.title = 'Recorrer';
+  marcoRecorrer.allow = 'fullscreen'; marcoRecorrer.src = url; document.body.appendChild(marcoRecorrer); marcoRecorrer.focus();
+}
+// recorrer.html avisa cuando hay que volver: a una foto 360 (punto y hacia dónde mira) o a los créditos
+addEventListener('message', (e) => {
+  if (!marcoRecorrer || e.source !== marcoRecorrer.contentWindow || e.origin !== location.origin) return;
+  const d = e.data || {}; if (d.tipo !== 'foto360' && d.tipo !== 'creditos') return;
+  marcoRecorrer.remove(); marcoRecorrer = null; markDirty();
+  if (d.tipo === 'creditos') { openSheet('info'); return; }
+  const pt = PANO.by[d.punto] || nearestPano(player.x, player.z);
+  enterPano({ pt, yaw: d.giro * Math.PI / 180, pitch: d.inclinacion * Math.PI / 180, instant: true });
+});
+addEventListener('pageshow', () => document.body.classList.remove('saliendo'));   // al volver con el botón Atrás
 function modeButtons() { for (const [id, m] of [['#m-pano', 'pano'], ['#m-walk', 'walk'], ['#m-air', 'air']]) $(id).setAttribute('aria-pressed', String(mode === m)); }
 function setMode(m, instant = false) {
   if (m === mode && !instant) return;
@@ -1313,7 +1340,7 @@ function wireUI() {
   $('#cap-h').textContent = TOUCH ? 'Tocá para ir' : 'Clic para ir';
   setTimeout(hideHelp, 12000);
   $('#m-pano').addEventListener('click', () => setMode('pano'));
-  $('#m-walk').addEventListener('click', () => setMode('walk'));
+  $('#m-walk').addEventListener('click', irARecorrer);
   $('#m-air').addEventListener('click', () => setMode('air'));
   $('#btn-zonas').addEventListener('click', () => openSheet('zonas'));
   $('#btn-ajustes').addEventListener('click', () => openSheet('ajustes'));
@@ -1384,9 +1411,25 @@ function render() {
 const PANO = { available: false, pts: [], by: {}, cur: null, trans: null, busy: false, queue: null, tex: new Map(), cubes: new Map(),
   scene: null, sphere: null, spots: null, hover: null, equipBefore: true, fadeOut: null, small: false, keep: 3 };
 const PANO_DIR = 'panos_v4';   // carpeta publicada de las panorámicas (cambia con cada tanda de renders)
-const PANO_START = { id: 'patio', yaw: Math.PI / 2, pitch: 0.02 };
+// Inicio: el patio, salvo que la dirección diga otro punto (?punto=sala_e&giro=90&inclinacion=0, en grados).
+// Así vuelve el modo Recorrer (recorrer.html) al punto más cercano y mirando hacia el mismo lado.
+const PANO_START = (() => { const q = new URLSearchParams(location.search), g = parseFloat(q.get('giro')), i = parseFloat(q.get('inclinacion'));
+  return { id: q.get('punto') || 'patio', yaw: isFinite(g) ? g * Math.PI / 180 : Math.PI / 2, pitch: isFinite(i) ? i * Math.PI / 180 : 0.02 }; })();
+// Las fotos 360 salieron más claras que el gimnasio real. Juane eligió el nivel de luz en el modo Recorrer (exposición
+// 0,81, brillo 0,009): comparando 24 vistas desde 6 puntos, las fotos igualan ese nivel con 0,55 de su luz (antes de la
+// curva ACES). Se aplica al mostrarlas, sin volver a renderizar. ?ajuste360=1 las muestra como salieron de Blender.
+const PANO_AJUSTE = (() => { const v = parseFloat(new URLSearchParams(location.search).get('ajuste360')); return isFinite(v) && v > 0 ? v : 0.55; })();
 const PANO_FAR = 512;
 const PANO_GLSL = `
+// Deshace la curva ACES con la que se guardó la foto, cambia la exposición y la vuelve a aplicar (la misma de three.js)
+vec3 ajusteFoto(vec3 c) {
+  const mat3 O = mat3(vec3(1.60475, -0.10208, -0.00327), vec3(-0.53108, 1.10813, -0.07276), vec3(-0.07367, -0.00605, 1.07602));
+  const mat3 Oi = mat3(vec3(0.643038, 0.059269, 0.005962), vec3(0.311187, 0.931436, 0.063929), vec3(0.045775, 0.009295, 0.930118));
+  vec3 y = clamp(Oi * c, 0.0, 1.0164);
+  vec3 A = y * 0.983729 - 1.0, B = y * 0.4329510 - 0.0245786, C = y * 0.238081 + 0.000090537;
+  vec3 v = (-B - sqrt(max(B * B - 4.0 * A * C, 0.0))) / (2.0 * A) * ${PANO_AJUSTE.toFixed(4)};
+  return clamp(O * ((v * (v + 0.0245786) - 0.000090537) / (v * (0.983729 * v + 0.4329510) + 0.238081)), 0.0, 1.0);
+}
 vec2 equi(vec3 d) { d = normalize(d); return vec2(0.5 + atan(d.x, -d.z) * 0.15915494, 0.5 + asin(clamp(d.y, -1.0, 1.0)) * 0.31830989); }
 float unpackD(vec4 c) { return dot(c.rgb, vec3(1.0, 1.0 / 255.0, 1.0 / 65025.0)) * ${PANO_FAR}.0; }`;
 const PANO_VS = `varying vec3 vW;
@@ -1410,7 +1453,7 @@ float vis(samplerCube D, vec3 d) { float s = unpackD(textureCube(D, d)); return 
 void main() {
   vec3 dA = vW - uCA, dB = vW - uCB;
   if (uDbg > 0.5) { gl_FragColor = vec4(vis(uDA, dA), vis(uDB, dB), 0.0, 1.0); return; }
-  vec3 cA = texture2D(uTA, equi(dA)).rgb, cB = texture2D(uTB, equi(dB)).rgb;
+  vec3 cA = ajusteFoto(texture2D(uTA, equi(dA)).rgb), cB = ajusteFoto(texture2D(uTB, equi(dB)).rgb);
   float wA = (1.0 - uT) * (vis(uDA, dA) + 0.002), wB = uT * (vis(uDB, dB) + 0.002);
   gl_FragColor = vec4((cA * wA + cB * wB) / max(wA + wB, 1e-6), 1.0);
   #include <colorspace_fragment>
@@ -1419,7 +1462,7 @@ void main() {
     uniforms: { uT: { value: null }, uC: { value: new THREE.Vector3() }, uO: { value: 1 } }, vertexShader: PANO_VS,
     fragmentShader: `uniform sampler2D uT; uniform vec3 uC; uniform float uO; varying vec3 vW;
 ${PANO_GLSL}
-void main() { gl_FragColor = vec4(texture2D(uT, equi(vW - uC)).rgb, uO);
+void main() { gl_FragColor = vec4(ajusteFoto(texture2D(uT, equi(vW - uC)).rgb), uO);
   #include <colorspace_fragment>
 }` });
   PANO.spotMat = new THREE.ShaderMaterial({ depthTest: false, depthWrite: false, transparent: true, toneMapped: false,
@@ -1666,6 +1709,7 @@ function leavePano() {
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
+  if (marcoRecorrer) { last = now; return; }          // con Recorrer abierto encima, este visor no dibuja
   const dt = Math.min(0.05, (now - last) / 1000); last = now; let active = false;
   if (tween) { stepTween(dt); active = true; }
   else if (mode === 'pano') { if (panoStep(dt)) active = true; if (!PANO.trans && panoKeys(dt)) active = true; applyWalkCam(); }
@@ -1699,6 +1743,7 @@ async function init() {
   }
   render(); updateMap();
   $('#loading').classList.add('done');
+  if (new URLSearchParams(location.search).get('info') === '1') openSheet('info');   // créditos, desde recorrer.html
   const pend = Object.keys(ASSET_DEFS).filter((n) => !ASSET_PARTS[n]);
   if (pend.length) { console.warn('Modelos sin cargar:', pend, ASSET_FAIL); setTimeout(() => toast(`No cargaron ${pend.length} modelos 3D: se ven versiones simples. Detalle en Info.`, 8000), 1200); }
   loadTexSets(); loadBaked();

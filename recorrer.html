@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Black Sport · Recorrer</title>
+<script>
+// Página generada desde recorridos-3d/scripts/demo-recorrer-webgpu/demo_webgpu.html: el código es el mismo, solo cambia
+// este bloque. Para actualizarla, copiar la demo y volver a poner este bloque (ver el LEEME de la demo).
+window.SITIO = {
+  titulo: 'Black Sport · Recorrer',
+  volver: 'index.html',
+  archivos: { colisiones: 'recorrer/colisiones.json', manifiesto: 'recorrer/manifest.json', escena: 'recorrer/escena.glb', luces: 'recorrer/config.json' },
+};
+</script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #eee; font: 14px/1.4 -apple-system, system-ui, sans-serif; }
+  canvas { display: block; touch-action: none; cursor: grab; outline: none; }
+  canvas:active { cursor: grabbing; }
+  #panel { position: fixed; top: 12px; left: 12px; width: 220px; max-height: calc(100% - 24px); overflow: auto; background: rgba(15,15,15,.82); border-radius: 10px; padding: 12px; }
+  #panel h1 { font-size: 15px; margin: 0 0 8px; }
+  #panel p { margin: 6px 0; color: #bbb; font-size: 12.5px; }
+  #lugares button, #ocultar { display: block; width: 100%; margin: 4px 0; padding: 7px 9px; text-align: left; background: #2a2a2a; color: #eee; border: 0; border-radius: 6px; font: inherit; cursor: pointer; }
+  #lugares button:hover, #ocultar:hover { background: #3a3a3a; }
+  label { display: block; margin: 8px 0 2px; font-size: 12.5px; color: #bbb; }
+  #estado { position: fixed; right: 12px; bottom: 10px; background: rgba(15,15,15,.7); padding: 4px 9px; border-radius: 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  #foto360 { position: fixed; top: 12px; right: 12px; padding: 9px 14px; border-radius: 8px; background: rgba(15,15,15,.85); color: #eee; text-decoration: none; font-weight: 600; }
+  #foto360:hover { background: rgba(45,45,45,.9); }
+  #panel a { color: #9cc4ff; }
+  #cargando { position: fixed; inset: 0; display: grid; place-items: center; background: #111; font-size: 17px; text-align: center; padding: 20px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="cargando">Cargando el gimnasio…</div>
+<div id="panel">
+  <h1>Black Sport · demo WebGPU</h1>
+  <p><b>Compu:</b> clic en la escena para recorrer; mouse para mirar, flechas o W A S D para caminar, Shift para correr, Esc para volver a este menú. <b>Celular:</b> palanca abajo a la izquierda para moverse y arrastrar para mirar.</p>
+  <div id="lugares"></div>
+  <div id="ajustes">
+  <label>Brillo de paredes y piso: <span id="k0Txt"></span></label>
+  <input id="k0" type="range" min="0" max="0.08" step="0.002" style="width:100%">
+  <label>Exposición (claridad general): <span id="expoTxt"></span></label>
+  <input id="expo" type="range" min="0.4" max="1.3" step="0.01" style="width:100%">
+  <label>Brillo extra de paredes y techo: <span id="kpTxt"></span></label>
+  <input id="kp" type="range" min="0" max="3" step="0.1" style="width:100%">
+  <label>Relieve de paredes y piso: <span id="relTxt"></span></label>
+  <input id="rel" type="range" min="0" max="4" step="0.1" style="width:100%">
+  <label>Brillo de las luces: <span id="ksTxt"></span></label>
+  <input id="ks" type="range" min="0" max="3" step="0.1" style="width:100%">
+  <label>Reflejo en el piso: <span id="refTxt"></span></label>
+  <input id="ref" type="range" min="0" max="3" step="0.1" style="width:100%">
+  <label>Resplandor de las luces: <span id="bloTxt"></span></label>
+  <input id="blo" type="range" min="0" max="2" step="0.05" style="width:100%">
+  <label><input id="col" type="checkbox" checked> No atravesar paredes</label>
+  </div>
+  <p id="creditos" hidden>Máquinas y accesorios: modelos de Sketchfab con licencia CC BY 4.0. <a id="verCreditos" href="#">Ver autores</a>.</p>
+  <button id="ocultar">Ocultar este panel</button>
+</div>
+<button id="menu" style="display:none;position:fixed;top:12px;left:12px;padding:8px 12px;border:0;border-radius:8px;background:rgba(15,15,15,.8);color:#eee;font:inherit">Menú</button>
+<div id="joy" style="display:none;position:fixed;left:22px;bottom:26px;width:132px;height:132px;border-radius:50%;border:2px solid rgba(255,255,255,.45);background:rgba(15,15,15,.35);touch-action:none;user-select:none;-webkit-user-select:none"><div id="joyP" style="position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(255,255,255,.75);pointer-events:none"></div></div>
+<div id="inicio" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);pointer-events:none;place-items:center;text-align:center"><div style="font-size:22px;font-weight:600;text-shadow:0 1px 8px #000">Hacé clic para recorrer<div style="font-size:14px;font-weight:400;margin-top:8px;color:#ddd">Mouse para mirar · flechas o W A S D para caminar · Esc para volver a este menú</div></div></div>
+<div id="pista" style="display:none;position:fixed;left:12px;bottom:10px;background:rgba(15,15,15,.6);padding:4px 9px;border-radius:6px;font-size:12px">Esc: menú</div>
+<div id="estado">…</div>
+<a id="foto360" href="#" hidden>← Foto 360</a>
+<script type="module">
+import * as THREE from 'three';
+import { reflector, float, vec3, vec4, uniform, normalView, normalWorld, normalWorldGeometry, directionToFaceDirection, positionWorld, positionViewDirection, materialColor, materialRoughness, materialReference, cameraViewMatrix, texture, texture3D, BRDF_GGX, pass, vec2 } from 'three/tsl';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+
+const Q = new URLSearchParams(location.search);
+window.nErrores = 0; window.primerosErrores = ''; { const ce = console.error; console.error = (...x) => { window.nErrores++; if (window.nErrores < 4) window.primerosErrores += x.map(String).join(' ').slice(0, 400) + ' || '; ce(...x); }; }
+const cargando = document.getElementById('cargando');
+const falla = (e) => { cargando.textContent = 'No se pudo armar la demo: ' + (e && e.message ? e.message : e); window.demoError = String(e && e.stack ? e.stack : e); console.error(e); };
+// En la carpeta del horneado los archivos están sueltos. En el sitio, recorrer.html define window.SITIO con sus rutas,
+// la página a la que vuelve el botón Foto 360 y la de créditos.
+const SITIO = window.SITIO || null;
+const ARCH = Object.assign({ colisiones: 'splat_colisiones.json', manifiesto: 'salida/manifest.json', escena: 'escena.glb', luces: 'config.json' }, SITIO && SITIO.archivos);
+const AJUSTES = !SITIO || Q.get('ajustes') === '1';      // en el sitio, los deslizadores y los cuadros por segundo solo con ?ajustes=1
+try {
+const datos = await (await fetch(ARCH.colisiones)).json();
+const C = datos.celda;
+const libre = (x, z) => { const i = Math.floor(x / C), j = Math.floor(z / C); return j >= 0 && j < datos.nz && i >= 0 && i < datos.nx && datos.filas[j][i] === '0'; };
+
+const renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: Q.get('webgl') === '1' });   // ?webgl=1 prueba el respaldo WebGL
+await renderer.init();
+window.motor = renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL (respaldo)';
+renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = +(Q.get('expo') || 0.81);     // los renders de Blender usan 0.85
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0.55, 0.62, 0.72);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 300);
+camera.rotation.order = 'YXZ';
+
+// ---------- escena: materiales de escena.glb + geometría y luz horneadas en Blender ----------
+const gl = new GLTFLoader(), tl = new THREE.TextureLoader();
+const man = await (await fetch(ARCH.manifiesto)).json();
+const enMan = (f) => new URL(f, new URL(ARCH.manifiesto, location.href)).href;     // rutas del manifiesto, relativas a él
+const TACTIL = matchMedia('(pointer: coarse)').matches || Q.get('movil') === '1';
+const archivos = { ...man.atlas, ...(TACTIL && man.atlas_movil ? man.atlas_movil : {}) }; const claves = Object.keys(archivos);
+cargando.textContent = SITIO ? 'Cargando el recorrido…' : 'Cargando el gimnasio… (modelos y luz horneada, unos 100 MB)';
+const [base, horneada, ...mapas] = await Promise.all([gl.loadAsync(ARCH.escena), gl.loadAsync(enMan(man.horneada || 'escena_horneada.glb')), ...claves.map((k) => tl.loadAsync(enMan(archivos[k])))]);
+const atlas = {}; claves.forEach((k, i) => { const t = mapas[i]; t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.channel = 1; t.anisotropy = 8; t.needsUpdate = true; atlas[k] = t; });
+const intensidad = Math.PI / man.codificacion;
+const raiz = base.scene; scene.add(raiz); raiz.updateMatrixWorld(true); horneada.scene.updateMatrixWorld(true);
+const porNombre = new Map(); raiz.traverse((o) => { if (o.isMesh) porNombre.set(o.name, o); });
+const ENV_DIEL = +(Q.get('envd') || 0.25), ENV_METAL = 1.0;
+let nHorneadas = 0; const sinPar = [];
+// En el sitio, la geometría horneada viene cuantizada (enteros de 16 bits): antes de moverla se pasa a decimales,
+// porque si no, al aplicarle la posición del objeto se recortaría.
+const aDecimales = (g) => {
+  for (const k of Object.keys(g.attributes)) {
+    const a = g.attributes[k]; if (a.array instanceof Float32Array && !a.isInterleavedBufferAttribute) continue;
+    const n = a.count, s = a.itemSize, f = new Float32Array(n * s), get = ['getX', 'getY', 'getZ', 'getW'];
+    for (let i = 0; i < n; i++) for (let j = 0; j < s; j++) f[i * s + j] = a[get[j]](i);
+    g.setAttribute(k, new THREE.BufferAttribute(f, s));
+  }
+  return g;
+};
+const conLuz = (mat, lm) => { const m = mat.clone(); m.lightMap = lm; m.lightMapIntensity = intensidad; return m; };
+horneada.scene.traverse((o) => {
+  if (!o.isMesh) return;
+  let a = man.objetos[o.name]; if (!a || !atlas[a]) return;
+  if (a === 'piso' && atlas.piso_equipo) a = 'piso_equipo';       // el piso con las sombras del equipamiento
+  const geo = aDecimales(o.geometry.clone()).applyMatrix4(o.matrixWorld);
+  if (o.name === 'ceil|roofIn') {
+    const techo = porNombre.get('ceil|roof'); if (!techo) return;
+    const m = conLuz(techo.material, atlas[a]); m.side = THREE.FrontSide;
+    const dentro = new THREE.Mesh(geo, m); dentro.name = o.name; scene.add(dentro); nHorneadas++; return;
+  }
+  const t = porNombre.get(o.name); if (!t) { sinPar.push(o.name); return; }
+  t.updateMatrixWorld(); geo.applyMatrix4(t.matrixWorld.clone().invert());
+  t.geometry = geo; t.material = conLuz(t.material, atlas[a]); t.userData.horneada = true; nHorneadas++;
+});
+window.horneadas = nHorneadas; window.sinPar = sinPar;
+
+// Lo que no se horneó: emisores, vidrio, contexto exterior y espejos
+const emisor = (o, f) => { const c = (o.material.emissive && o.material.emissive.getHex() ? o.material.emissive : o.material.color).clone().multiplyScalar(f); o.material = new THREE.MeshBasicMaterial({ color: c, map: o.material.emissiveMap || o.material.map || null }); };
+const plano = (o, f) => { o.material = new THREE.MeshBasicMaterial({ color: o.material.color.clone().multiplyScalar(f), map: o.material.map || null, side: o.material.side }); };
+const espejos = [];
+raiz.traverse((o) => {
+  if (!o.isMesh || o.userData.horneada) return;
+  const k = o.name.split('|')[1] || o.name;
+  if (k === 'led') emisor(o, 9); else if (k === 'lightEmit') emisor(o, 6);   // las mismas fuerzas de emisión que en Blender
+  else if (k === 'ground' || k === 'neighbor') plano(o, 0.55);
+  else if (k === 'roof') { o.material = o.material.clone(); o.material.side = THREE.BackSide; plano(o, 0.5); }
+  else if (k.startsWith('mirror')) espejos.push(o);
+});
+for (const o of espejos) {
+  o.geometry.computeBoundingBox(); const centro = o.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(o.matrixWorld);
+  const n = new THREE.Vector3().fromBufferAttribute(o.geometry.attributes.normal, 0).transformDirection(o.matrixWorld);
+  const r = reflector({ resolutionScale: 1, samples: +(Q.get('muestras') ?? 4), bounces: Q.get('rebotes') === '1' });
+  r.target.position.copy(centro).addScaledVector(n, 0.004); r.target.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n); scene.add(r.target); r.target.updateMatrixWorld(true);
+  (window.infoEspejos = window.infoEspejos || []).push(o.name + ' n=' + n.toArray().map((v) => v.toFixed(2)) + ' c=' + centro.toArray().map((v) => v.toFixed(2)));
+  const m = new THREE.MeshBasicNodeMaterial(); m.colorNode = r.rgb.mul(0.92); o.material = m;
+}
+window.espejos = espejos.length;
+
+// ---------- Resplandor de las luces ----------
+// La escena se dibuja en alta gama (sin recortar) y lo que pasa de 3 (plafones y tiras LED) se difumina alrededor.
+// Así el reflejo de una luz en el piso no se enciende. ?resplandor=0 lo apaga y dibuja directo, sin post-proceso.
+const RESPLANDOR = +(Q.get('resplandor') ?? 0.1);
+let postpro = null, resplandor = null;
+if (RESPLANDOR > 0) {
+  postpro = new THREE.PostProcessing(renderer);
+  const color = pass(scene, camera).getTextureNode('output');
+  // Las tiras LED y los plafones llegan a 15-27 (así se ven blancos como en Blender). Para el resplandor se topean en 4:
+  // si no, un toque de resplandor ya empañaba todo el techo.
+  const tope = +(Q.get('tope') ?? 4);
+  resplandor = bloom(color.min(vec4(tope, tope, tope, 1)), RESPLANDOR, +(Q.get('radio') ?? 0.2), +(Q.get('umbral') ?? 3));
+  postpro.outputNode = color.add(resplandor);
+}
+const dibujarEscena = () => (postpro ? postpro.render() : renderer.render(scene, camera));
+
+// ---------- Reflejo del salón en el piso ----------
+// Una cámara espejada bajo el piso dibuja la escena en una textura a media resolución, una vez por cuadro. Cada piso la
+// muestra borrosa según su rugosidad, quebrada por su relieve y con la fuerza que da el ángulo de la vista (Fresnel):
+// mirando de arriba casi no se ve; mirando a lo lejos se ven los plafones y las máquinas. En estos pisos reemplaza al
+// brillo de las luces del paso 1, que era una aproximación de lo mismo. ?reflejo=0 lo apaga.
+// No se usa reflector() de three.js: con la cámara casi horizontal su plano de corte oblicuo recorta toda la escena
+// y el reflejo sale negro (probado el 15/11). Acá no hace falta ese corte: lo que está a ras del piso se oculta.
+const PISOS = /\|(rubber|epdm|woodFloor|wcFloor)$/;          // pisos de adentro (el pasto y los de afuera, no)
+const REFLEJO = +(Q.get('reflejo') ?? 1), uReflejo = uniform(REFLEJO), ALTURA_PISO = 0;
+let reflejoRT = null;
+const camEspejo = new THREE.PerspectiveCamera(), uMatEspejo = uniform(new THREE.Matrix4());
+const aRasDelPiso = [];                                       // pisos, alfombras, pasto y suelo: no se ven desde abajo
+if (REFLEJO > 0) {
+  reflejoRT = new THREE.RenderTarget(1, 1, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, depthBuffer: true });
+  scene.traverse((o) => { if (!o.isMesh) return; const k = o.name.split('|')[1] || ''; o.geometry.computeBoundingBox(); const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld); if (b.max.y < ALTURA_PISO + 0.03 || k.startsWith('mirror')) aRasDelPiso.push(o); });
+}
+const escalaReflejo = +(Q.get('refres') ?? (TACTIL ? 0.35 : 0.5));
+const _dir = new THREE.Vector3(), _arriba = new THREE.Vector3(), _tam = new THREE.Vector2();
+const actualizarReflejo = () => {
+  renderer.getDrawingBufferSize(_tam);
+  const w = Math.max(1, Math.round(_tam.x * escalaReflejo)), h = Math.max(1, Math.round(_tam.y * escalaReflejo));
+  if (reflejoRT.width !== w || reflejoRT.height !== h) reflejoRT.setSize(w, h);
+  camEspejo.fov = camera.fov; camEspejo.aspect = camera.aspect; camEspejo.near = camera.near; camEspejo.far = camera.far; camEspejo.updateProjectionMatrix();
+  camEspejo.position.set(camera.position.x, 2 * ALTURA_PISO - camera.position.y, camera.position.z);
+  _dir.set(0, 0, -1).applyQuaternion(camera.quaternion); _dir.y = -_dir.y;
+  _arriba.set(0, 1, 0).applyQuaternion(camera.quaternion); _arriba.y = -_arriba.y;
+  camEspejo.up.copy(_arriba); camEspejo.lookAt(_dir.add(camEspejo.position)); camEspejo.updateMatrixWorld();
+  uMatEspejo.value.multiplyMatrices(camEspejo.projectionMatrix, camEspejo.matrixWorldInverse);
+  for (const o of aRasDelPiso) { o.userData.vis = o.visible; o.visible = false; }      // los espejos también: no se dibujan dos veces
+  const antes = renderer.getRenderTarget(); renderer.setRenderTarget(reflejoRT); renderer.render(scene, camEspejo); renderer.setRenderTarget(antes);
+  for (const o of aRasDelPiso) o.visible = o.userData.vis;
+};
+// Un cuadro completo: primero el reflejo del piso, después la escena (con el resplandor, si está prendido)
+const dibujar = () => { if (reflejoRT && uReflejo.value > 0) actualizarReflejo(); dibujarEscena(); };
+window.dibujar = dibujar;
+window.reflejoInfo = () => ({ activo: !!reflejoRT, ocultos: aRasDelPiso.length, tam: reflejoRT && [reflejoRT.width, reflejoRT.height] });
+
+// ---------- Relieve: de dónde viene la luz en cada lugar ----------
+// El horneado guarda cuánta luz llega a cada punto, pero no de dónde viene. Por eso el relieve de las texturas
+// (mapas de normales) no se veía: un bulto recibía la misma luz que el plano de al lado.
+// Con las mismas luces que usa bake.py (config.json: plafones, tiras LED, baños, sol y cielo) se arma una grilla 3D
+// con la dirección media de la luz en cada lugar. Cada superficie con relieve se aclara donde el relieve mira hacia
+// esa luz y se oscurece donde le da la espalda. El promedio no cambia, así que la calibración de brillo se mantiene.
+// Límite: no sabe de paredes ni techos que tapan una luz (en los baños se cuela la tira LED del salón).
+const RELIEVE = +(Q.get('relieve') ?? 2);
+const uRelieve = uniform(RELIEVE);
+function armarCampo(cfg) {
+  const t0 = performance.now(), luces = [];      // [x, y, z, potencia, nx, ny, nz]; n = hacia dónde emite
+  const pc = cfg.paneles; if (pc) for (const z of pc.filas_z) for (const x of pc.xs) luces.push([x, pc.y, z, pc.watts, 0, -1, 0]);
+  const bc = cfg.panel_banos; if (bc) for (const [x, z] of bc.posiciones) luces.push([x, bc.y, z, bc.watts, 0, -1, 0]);
+  const lc = cfg.led, caras = { '+z': [0, 1], '-z': [0, -1], '+x': [1, 0], '-x': [-1, 0] };
+  if (lc) for (const [x0, z0, x1, z1, f] of lc.corridas) {      // cada tira, en tramos de 50 cm (como en bake.py: una hacia abajo y otra hacia arriba)
+    const largo = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(largo / 0.5)), c = caras[f] || [0, 0], sep = lc.separacion_pared || 0;
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n, x = x0 + (x1 - x0) * t + c[0] * sep, z = z0 + (z1 - z0) * t + c[1] * sep;
+      if (lc.watts_por_metro_abajo) luces.push([x, lc.y, z, lc.watts_por_metro_abajo * largo / n, 0, -1, 0]);
+      if (lc.watts_por_metro_arriba) luces.push([x, lc.y, z, lc.watts_por_metro_arriba * largo / n, 0, 1, 0]);
+    }
+  }
+  // Afuera: sol y cielo. Adentro: lo que está bajo el techo.
+  const sol = cfg.sol ? new THREE.Vector3(...cfg.sol.dir).normalize() : new THREE.Vector3(0, 1, 0), eSol = cfg.sol ? cfg.sol.fuerza : 0;
+  const eCielo = cfg.cielo ? cfg.cielo.fuerza * Math.PI * (cfg.cielo.color[0] + cfg.cielo.color[1] + cfg.cielo.color[2]) / 3 : 1;
+  const afuera = sol.clone().multiplyScalar(eSol).add(new THREE.Vector3(0, eCielo * 2 / 3, 0)).divideScalar(eSol + eCielo);
+  const techo = porNombre.get('ceil|roof');
+  const caja = techo ? new THREE.Box3().setFromObject(techo) : new THREE.Box3().setFromPoints(luces.map((l) => new THREE.Vector3(l[0], l[1], l[2]))).expandByScalar(2);
+  const adentro = (x, y, z) => x > caja.min.x && x < caja.max.x && z > caja.min.z && z < caja.max.z && y < caja.max.y;
+  const borde = 1.2, min = new THREE.Vector3(caja.min.x - borde, Math.min(0, caja.min.y) - borde, caja.min.z - borde);
+  const tam = new THREE.Vector3(caja.max.x + borde, caja.max.y + borde, caja.max.z + borde).sub(min);
+  const celda = Math.max(0.4, Math.max(tam.x, tam.y, tam.z) / 128);
+  const nx = Math.ceil(tam.x / celda), ny = Math.ceil(tam.y / celda), nz = Math.ceil(tam.z / celda); tam.set(nx * celda, ny * celda, nz * celda);
+  const datos = new Uint8Array(nx * ny * nz * 4), DIR = 0.9;     // 0.9: algo de la luz rebota y no tiene dirección
+  const L = Float32Array.from(luces.flat()), nL = luces.length; let nAdentro = 0;
+  for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const px = min.x + (i + 0.5) * celda, py = min.y + (j + 0.5) * celda, pz = min.z + (k + 0.5) * celda;
+    let vx = 0, vy = 0, vz = 0;
+    if (adentro(px, py, pz)) {
+      nAdentro++; let s = 0;
+      for (let q = 0; q < nL; q++) {
+        const o = q * 7, dx = L[o] - px, dy = L[o + 1] - py, dz = L[o + 2] - pz, d2 = dx * dx + dy * dy + dz * dz + 0.05, inv = 1 / Math.sqrt(d2);
+        const ce = -(L[o + 4] * dx + L[o + 5] * dy + L[o + 6] * dz) * inv; if (ce <= 0) continue;   // la luz emite para un solo lado
+        const e = L[o + 3] * ce / d2; vx += e * dx * inv; vy += e * dy * inv; vz += e * dz * inv; s += e;
+      }
+      if (s > 0) { vx /= s; vy /= s; vz /= s; }
+    } else { vx = afuera.x; vy = afuera.y; vz = afuera.z; }
+    const o = 4 * (i + nx * (j + ny * k));
+    datos[o] = Math.round((vx * DIR * 0.5 + 0.5) * 255); datos[o + 1] = Math.round((vy * DIR * 0.5 + 0.5) * 255); datos[o + 2] = Math.round((vz * DIR * 0.5 + 0.5) * 255); datos[o + 3] = 255;
+  }
+  const tex = new THREE.Data3DTexture(datos, nx, ny, nz);
+  tex.format = THREE.RGBAFormat; tex.type = THREE.UnsignedByteType; tex.minFilter = tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = tex.wrapT = tex.wrapR = THREE.ClampToEdgeWrapping; tex.unpackAlignment = 1; tex.generateMipmaps = false; tex.needsUpdate = true;
+  return { tex, min, tam, info: { luces: nL, celda: +celda.toFixed(2), grilla: [nx, ny, nz], adentro: nAdentro, ms: Math.round(performance.now() - t0), techo: !!techo } };
+}
+let campo = null;
+{ try { campo = armarCampo(await (await fetch(ARCH.luces)).json()); } catch (e) { console.warn('Relieve: no se pudo leer config.json; se usa luz desde arriba', e); } }
+window.campoLuz = campo ? campo.info : 'sin config.json: luz desde arriba';
+// Cuánto cambia la luz horneada por el relieve, en cada punto. Ng: la superficie lisa; normalWorld: con el relieve.
+// La dirección se lee 30 cm hacia afuera de la superficie, para no mezclar la luz de los dos lados de una pared.
+// Nodos compartidos por todos los materiales: la dirección de la luz se lee una sola vez por punto.
+const NG = directionToFaceDirection(normalWorldGeometry);
+const DLUZ = (campo ? texture3D(campo.tex, positionWorld.add(NG.mul(0.3)).sub(vec3(campo.min.x, campo.min.y, campo.min.z)).div(vec3(campo.tam.x, campo.tam.y, campo.tam.z))).xyz.mul(2).sub(1) : vec3(0, 0.8, 0)).toVar('dirLuz');
+// Brillo de las luces: el reflejo de los plafones y las tiras LED, que se mueve con la vista y se quiebra con el relieve.
+// Es el brillo de cualquier material (4% de reflejo, GGX como en Blender), con la rugosidad de cada textura
+// (mínimo 0.4: con una sola dirección media de luz, un reflejo más fino quedaría en un lugar que no corresponde).
+// Usa la luz horneada de cada punto, así que respeta las sombras.
+const KS = +(Q.get('ks') ?? 0.5), uKS = uniform(KS);
+const brilloLuces = () => {
+  const ng = NG, D = DLUZ, d = D.length(), Lw = D.div(d.max(1e-3));
+  const Lv = cameraViewMatrix.mul(vec4(Lw, 0)).xyz.normalize();
+  const spec = BRDF_GGX({ lightDirection: Lv, f0: vec3(0.04), f90: float(1), roughness: materialRoughness.clamp(0.4, 1) });
+  return spec.mul(normalWorld.dot(Lw).max(0)).mul(d).div(ng.dot(Lw).max(0.3)).mul(Math.PI).mul(uKS);
+};
+// Cada piso según su rugosidad real: los ásperos (la goma, 0,9 a 1) no reflejan la sala, tienen solo el brillo suave
+// de las luces del paso 1; los lisos (madera 0,5, porcelanato 0,42) muestran el reflejo. En el medio se mezclan.
+// El 15/11 se probó bajar la rugosidad de la goma para que reflejara: Juane, que conoce el lugar, dijo que la goma no
+// refleja así. ?refrug=0.6 lo vuelve a mostrar, para comparar.
+const RUG = materialRoughness.mul(+(Q.get('refrug') ?? 1)).clamp(0.05, 1);
+const LISURA = RUG.oneMinus().sub(0.2).div(0.4).clamp(0, 1);       // rugosidad 0,8 o más: 0 (brillo); 0,4 o menos: 1 (reflejo)
+const FLIP_REFLEJO = -0.5;   // la textura de un render target se lee con la v hacia abajo (igual en WebGPU y WebGL, probado)
+const reflejoNodo = () => {
+  // Dónde cae este punto del piso en la imagen de la cámara espejada, corrido un poco por el relieve
+  const p = uMatEspejo.mul(vec4(positionWorld, 1)), ndc = p.xy.div(p.w);
+  const uvR = vec2(ndc.x.mul(0.5).add(0.5), ndc.y.mul(FLIP_REFLEJO).add(0.5)).add(normalWorld.sub(NG).xz.mul(0.04));
+  const refl = texture(reflejoRT.texture, uvR).level(RUG.mul(+(Q.get('refblur') ?? 7))).rgb;   // más rugoso, más borroso
+  const ndv = normalView.dot(positionViewDirection).clamp(0, 1);
+  const F = float(0.04).add(RUG.oneMinus().max(0.04).sub(0.04).mul(ndv.oneMinus().pow(5)));  // Fresnel de Schlick, menos en lo rugoso
+  return VER === 'reflejo' ? refl : refl.mul(F).mul(LISURA).mul(uReflejo);
+};
+const factorRelieve = () => { const ng = NG, D = DLUZ; return normalWorld.sub(ng).dot(D).div(ng.dot(D).add(1).max(0.2)).mul(uRelieve).add(1).clamp(0.35, 2.2); };
+
+// Reflejos del ambiente: una captura del propio salón. En lo horneado va bajita, porque la luz difusa ya está en el horneado.
+const cuboRT = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+const cubo = new THREE.CubeCamera(0.1, 200, cuboRT); cubo.position.set(17, 1.6, 7.5); scene.add(cubo);
+// El horneado guarda solo la luz difusa. En superficies oscuras (goma, hormigón negro) casi todo lo que se ve es brillo:
+// el 4% o más que refleja cualquier material. Acá se suma ese brillo usando la misma luz horneada de cada punto,
+// más fuerte cuando la superficie se mira de costado. Los metales toman el reflejo de la captura del ambiente.
+// Brillo 0.012 y exposición 0.81: los eligió Juane el 15/11/2026 comparando con el gimnasio real, que conoce en persona.
+// Contra el render de Blender f_2093 el valor que igualaba el piso era 0.056: el render es más claro que el lugar real.
+// 15/11 (tarde): con el brillo de las luces (ks 0.5) el brillo parejo baja a 0.009, y el extra de paredes y techo (kpared) queda
+// en 0.5, para que las paredes sigan al nivel que eligió Juane. Antes kpared no hacía efecto (ver conBrillo).
+const K0base = +(Q.get('k0') ?? 0.009), K1 = +(Q.get('k1') ?? 0.04), MEZCLA = +(Q.get('mezcla') ?? 0.8), KPARED = +(Q.get('kpared') ?? 0.5);
+// Se suma al color de la superficie, así usa exactamente la misma luz horneada que la parte difusa.
+// Una parte del brillo sigue el dibujo de la textura (para no aplanarla) y el resto es parejo.
+const lienzoProm = new OffscreenCanvas(8, 8), ctxProm = lienzoProm.getContext('2d', { willReadFrequently: true });
+const lin = (v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+const albedoMedio = (m) => {
+  let t = 1;
+  if (m.map && m.map.image) { try { ctxProm.drawImage(m.map.image, 0, 0, 8, 8); const d = ctxProm.getImageData(0, 0, 8, 8).data; let a = 0; for (let i = 0; i < d.length; i += 4) a += (lin(d[i] / 255) + lin(d[i + 1] / 255) + lin(d[i + 2] / 255)) / 3; t = a / 64; } catch (e) { t = 0.2; } }
+  return Math.max(0.004, t * (m.color.r + m.color.g + m.color.b) / 3);
+};
+const uK0 = uniform(K0base), uK1 = uniform(K1);
+// Solo se toca el color (rgb): la transparencia queda la del material, para no cambiar los recortes (helechos).
+// Lo que cambia de un material a otro (su color medio y el refuerzo de paredes) va como propiedad del material y se lee
+// con materialReference. Antes iba como número fijo dentro del nodo, y three.js reusa el mismo programa para materiales
+// con las mismas texturas: todos tomaban los números del primero que se compilaba (por eso kpared no hacía efecto).
+const uKP = uniform(KPARED);
+const conBrillo = (m, esPared) => {
+  m.brilloTextura = MEZCLA / albedoMedio(m); m.brilloParejo = 1 - MEZCLA; m.esPared = esPared ? 1 : 0;
+  const k = uK0.mul(float(1).add(materialReference('esPared', 'float').mul(uKP.sub(1))));     // en paredes y techo, k0 × kpared
+  const ndv = normalView.dot(positionViewDirection).clamp(0, 1);
+  return materialColor.rgb.mul(float(1).add(k.mul(materialReference('brilloTextura', 'float')))).add(k.mul(materialReference('brilloParejo', 'float'))).add(uK1.mul(ndv.oneMinus().pow(5)));
+};
+// ?ver=relieve muestra el factor de relieve en gris (gris medio = sin cambio); ?ver=luz, la dirección de la luz como color;
+// ?ver=reflejo, solo el reflejo del piso, sin Fresnel.
+const VER = Q.get('ver');
+const ponerAmbiente = () => {
+  const visto = new Set(); let nRelieve = 0, nPisos = 0;
+  scene.traverse((o) => {
+    const m = o.isMesh && o.material; if (!m || !m.isMeshStandardMaterial || visto.has(m)) return; visto.add(m);
+    if (m.lightMap && m.metalness <= 0.5) {
+      const relieve = !!(m.normalMap || m.bumpMap);
+      let c = (K0base || K1) ? conBrillo(m, /\|(wall|roofIn|roofFlat|marble)$/.test(o.name)) : materialColor.rgb;
+      if (relieve) { c = c.mul(factorRelieve()); nRelieve++; }
+      const piso = reflejoRT && PISOS.test(o.name);
+      if (piso) { m.emissiveNode = reflejoNodo(); nPisos++; if (VER === 'reflejo') c = vec3(0); else c = c.add(brilloLuces().mul(LISURA.oneMinus())); }
+      else c = c.add(brilloLuces());
+      m.colorNode = vec4(c, materialColor.a);
+      if (VER === 'luz' || (VER === 'relieve' && relieve)) { m.colorNode = vec4(0, 0, 0, materialColor.a); m.emissiveNode = VER === 'luz' ? DLUZ.mul(0.5).add(0.5) : vec3(factorRelieve().mul(0.5)); }
+    }
+    else { m.envMap = cuboRT.texture; m.envMapIntensity = 1; }
+    m.needsUpdate = true;
+  });
+  window.conRelieve = nRelieve; window.pisosConReflejo = nPisos;
+};
+
+// ---------- avatar simple, para verse en los espejos (desde adentro no se ve: caras traseras ocultas) ----------
+const avatar = new THREE.Group(); const piel = new THREE.MeshBasicMaterial({ color: 0x8a6f5e }), ropa = new THREE.MeshBasicMaterial({ color: 0x1b1d22 }), pant = new THREE.MeshBasicMaterial({ color: 0x2b3442 });
+const pieza = (g, m, y) => { const p = new THREE.Mesh(g, m); p.position.y = y; avatar.add(p); return p; };
+pieza(new THREE.SphereGeometry(0.105, 24, 16), piel, 0); pieza(new THREE.CapsuleGeometry(0.17, 0.42, 8, 16), ropa, -0.52); pieza(new THREE.CapsuleGeometry(0.075, 0.62, 6, 12), pant, -1.2).position.x = -0.1; pieza(new THREE.CapsuleGeometry(0.075, 0.62, 6, 12), pant, -1.2).position.x = 0.1;
+pieza(new THREE.CapsuleGeometry(0.05, 0.5, 6, 12), ropa, -0.55).position.x = -0.26; pieza(new THREE.CapsuleGeometry(0.05, 0.5, 6, 12), ropa, -0.55).position.x = 0.26;
+if (Q.get('avatar') !== '0') scene.add(avatar);
+
+// ---------- caminata ----------
+let yaw = Math.PI / 2, pitch = 0, altura = 1.6;
+const pos = new THREE.Vector3(29.8, altura, 8.6);
+const ir = (p) => { pos.x = p.x; pos.z = p.z; };
+const lugares = document.getElementById('lugares');
+for (const p of datos.puntos) { const b = document.createElement('button'); b.textContent = p.nombre; b.onclick = () => { ir(p); if (!TACTIL) fijar(); }; lugares.appendChild(b); }
+window.irA = (id) => ir(datos.puntos.find((p) => p.id === id));
+window.mirar = (grados, inclinacion = 0) => { yaw = grados * Math.PI / 180; pitch = inclinacion * Math.PI / 180; };
+window.posicion = (x, z, h) => { pos.x = x; pos.z = z; if (h) altura = h; };
+window.camara = camera; window.visor = renderer; window.escena = scene;
+const panel = document.getElementById('panel'), estado = document.getElementById('estado');
+const menu = document.getElementById('menu');
+const alternarPanel = () => { const oculto = panel.style.display !== 'none'; panel.style.display = oculto ? 'none' : ''; menu.style.display = oculto && Q.get('ui') !== '0' ? '' : 'none'; };
+menu.onclick = alternarPanel;
+const k0In = document.getElementById('k0'), k0Txt = document.getElementById('k0Txt'), expoIn = document.getElementById('expo'), expoTxt = document.getElementById('expoTxt');
+const relIn = document.getElementById('rel'), relTxt = document.getElementById('relTxt'), ksIn = document.getElementById('ks'), ksTxt = document.getElementById('ksTxt'), kpIn = document.getElementById('kp'), kpTxt = document.getElementById('kpTxt');
+k0In.value = K0base; expoIn.value = renderer.toneMappingExposure; relIn.value = RELIEVE; ksIn.value = KS; kpIn.value = KPARED;
+const verValores = () => { k0Txt.textContent = (+k0In.value).toFixed(3); expoTxt.textContent = (+expoIn.value).toFixed(2); relTxt.textContent = (+relIn.value).toFixed(1); ksTxt.textContent = (+ksIn.value).toFixed(1); kpTxt.textContent = (+kpIn.value).toFixed(1); };
+kpIn.oninput = () => { uKP.value = +kpIn.value; verValores(); };
+ksIn.oninput = () => { uKS.value = +ksIn.value; verValores(); };
+const refIn = document.getElementById('ref'), refTxt = document.getElementById('refTxt'), bloIn = document.getElementById('blo'), bloTxt = document.getElementById('bloTxt');
+refIn.value = REFLEJO; bloIn.value = RESPLANDOR; refIn.disabled = !reflejoRT; bloIn.disabled = !resplandor;
+const verValores2 = () => { refTxt.textContent = reflejoRT ? (+refIn.value).toFixed(1) : 'apagado'; bloTxt.textContent = resplandor ? (+bloIn.value).toFixed(2) : 'apagado'; };
+refIn.oninput = () => { uReflejo.value = +refIn.value; verValores2(); }; bloIn.oninput = () => { resplandor.strength.value = +bloIn.value; verValores2(); }; verValores2();
+k0In.oninput = () => { uK0.value = +k0In.value; verValores(); }; expoIn.oninput = () => { renderer.toneMappingExposure = +expoIn.value; verValores(); };
+relIn.oninput = () => { uRelieve.value = +relIn.value; verValores(); }; verValores();
+// Palanca táctil: adelante y atrás, y también hacia los costados
+const palanca = { x: 0, y: 0 }, joy = document.getElementById('joy'), joyP = document.getElementById('joyP');
+if (TACTIL && Q.get('ui') !== '0') { joy.style.display = ''; alternarPanel(); }
+const moverPalanca = (e) => { const r = joy.getBoundingClientRect(), R = r.width / 2; let x = (e.clientX - r.left - R) / R, y = (e.clientY - r.top - R) / R; const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; } palanca.x = x; palanca.y = y; joyP.style.transform = `translate(${x * R * 0.62}px, ${y * R * 0.62}px)`; };
+joy.addEventListener('pointerdown', (e) => { joy.setPointerCapture(e.pointerId); moverPalanca(e); e.preventDefault(); });
+joy.addEventListener('pointermove', (e) => { if (joy.hasPointerCapture(e.pointerId)) moverPalanca(e); });
+for (const ev of ['pointerup', 'pointercancel']) joy.addEventListener(ev, () => { palanca.x = 0; palanca.y = 0; joyP.style.transform = ''; });
+document.getElementById('ocultar').onclick = alternarPanel;
+const teclas = new Set();
+addEventListener('keydown', (e) => { if (e.key.startsWith('Arrow')) e.preventDefault(); if (e.key === 'h' || e.key === 'H') alternarPanel(); teclas.add(e.key.length === 1 ? e.key.toLowerCase() : e.key); });
+addEventListener('keyup', (e) => teclas.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
+addEventListener('blur', () => teclas.clear());
+let arrastre = null; const lienzo = renderer.domElement;
+// Compu: clic para entrar, el mouse mira sin mantener apretado y Esc vuelve al menú. Celular: se arrastra con el dedo.
+let fijado = false;
+const inicio = document.getElementById('inicio'), pista = document.getElementById('pista');
+function fijar() { if (Q.get('ui') === '0') return; try { const r = lienzo.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
+const verMenu = () => { if (TACTIL || Q.get('ui') === '0') return; panel.style.display = fijado ? 'none' : ''; menu.style.display = 'none'; inicio.style.display = fijado ? 'none' : 'grid'; pista.style.display = fijado ? '' : 'none'; };
+document.addEventListener('pointerlockchange', () => { fijado = document.pointerLockElement === lienzo; if (!fijado) teclas.clear(); verMenu(); });
+document.addEventListener('mousemove', (e) => { if (!fijado) return; yaw -= e.movementX * 0.0022; pitch = Math.max(-1.3, Math.min(1.3, pitch - e.movementY * 0.0022)); });
+lienzo.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') { if (!fijado) fijar(); return; } arrastre = { x: e.clientX, y: e.clientY }; lienzo.setPointerCapture(e.pointerId); });
+lienzo.addEventListener('pointermove', (e) => { if (!arrastre) return; yaw += (e.clientX - arrastre.x) * 0.004; pitch = Math.max(-1.3, Math.min(1.3, pitch + (e.clientY - arrastre.y) * 0.004)); arrastre = { x: e.clientX, y: e.clientY }; });
+lienzo.addEventListener('pointerup', () => { arrastre = null; });
+const col = document.getElementById('col');
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+let antes = performance.now(), cuadros = 0, tFps = antes, fps = 0, ambienteListo = false;
+renderer.setAnimationLoop((ahora) => {
+  const dt = Math.min(0.05, (ahora - antes) / 1000); antes = ahora;
+  if (teclas.has('ArrowLeft')) yaw += 1.6 * dt;
+  if (teclas.has('ArrowRight')) yaw -= 1.6 * dt;
+  let av = -palanca.y, lat = palanca.x;
+  if (teclas.has('ArrowUp') || teclas.has('w')) av += 1;
+  if (teclas.has('ArrowDown') || teclas.has('s')) av -= 1;
+  if (teclas.has('d')) lat += 1;
+  if (teclas.has('a')) lat -= 1;
+  const fuerza = Math.hypot(av, lat);
+  if (fuerza > 0.08) {
+    const v = (teclas.has('Shift') ? 5 : 2.2) * dt * Math.min(1, fuerza) / fuerza;
+    const dx = (-Math.sin(yaw) * av + Math.cos(yaw) * lat) * v, dz = (-Math.cos(yaw) * av - Math.sin(yaw) * lat) * v;
+    if (!col.checked || libre(pos.x + dx, pos.z + dz)) { pos.x += dx; pos.z += dz; }
+    else if (libre(pos.x + dx, pos.z)) pos.x += dx;
+    else if (libre(pos.x, pos.z + dz)) pos.z += dz;
+  }
+  pos.y = altura; camera.position.copy(pos); camera.rotation.set(pitch, yaw, 0);
+  avatar.position.copy(pos); avatar.rotation.y = yaw;
+  if (!ambienteListo) { avatar.visible = false; cubo.update(renderer, scene); avatar.visible = true; ponerAmbiente(); ambienteListo = true; }
+  dibujar();
+  cuadros++;
+  if (ahora - tFps > 500) { fps = Math.round(cuadros * 1000 / (ahora - tFps)); cuadros = 0; tFps = ahora; }
+  estado.textContent = `${window.motor} · ${fps} cuadros/s · x ${pos.x.toFixed(1)} · z ${pos.z.toFixed(1)}`;
+});
+// ?cam=x,z,altura,giro,inclinacion,fov&ui=0 : cámara fija para comparar contra un render de Blender
+if (Q.get('cam')) { const c = Q.get('cam').split(',').map(Number); window.posicion(c[0], c[1], c[2]); window.mirar(c[3], c[4] || 0); if (c[5]) { camera.fov = c[5]; camera.updateProjectionMatrix(); } }
+if (Q.get('ui') === '0') { panel.style.display = 'none'; estado.style.display = 'none'; }
+if (!AJUSTES) { document.getElementById('ajustes').style.display = 'none'; estado.style.display = 'none'; }
+if (SITIO) {
+  document.title = SITIO.titulo || document.title; panel.querySelector('h1').textContent = SITIO.titulo || 'Recorrer';
+  // Foto 360: vuelve al punto de foto más cercano, mirando hacia el mismo lado
+  const f360 = document.getElementById('foto360'); f360.hidden = Q.get('ui') === '0';
+  // Si el visor la abrió encima (compu), le avisa y el visor la cierra; si no, cambia de página.
+  const dentro = window.parent !== window && (() => { try { return window.parent.location.origin === location.origin; } catch (e) { return false; } })();
+  const avisar = (d) => { try { document.exitPointerLock(); } catch (e) {} window.parent.postMessage(d, location.origin); };
+  f360.onclick = (e) => {
+    e.preventDefault(); let mejor = datos.puntos[0], dm = Infinity;
+    for (const p of datos.puntos) { const d = Math.hypot(p.x - pos.x, p.z - pos.z); if (d < dm) { dm = d; mejor = p; } }
+    const g = +(yaw * 180 / Math.PI).toFixed(1), i = +(pitch * 180 / Math.PI).toFixed(1);
+    if (dentro) avisar({ tipo: 'foto360', punto: mejor.id, giro: g, inclinacion: i });
+    else location.href = `${SITIO.volver}?punto=${mejor.id}&giro=${g}&inclinacion=${i}`;
+  };
+  const cr = document.getElementById('creditos'), vc = document.getElementById('verCreditos'); cr.hidden = false;
+  vc.href = `${SITIO.volver}?info=1`; if (dentro) vc.onclick = (e) => { e.preventDefault(); avisar({ tipo: 'creditos' }); };
+}
+verMenu();
+cargando.remove(); window.demoLista = true;
+} catch (e) { falla(e); }
+</script>
+</body>
+</html>
