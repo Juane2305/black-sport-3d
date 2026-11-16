@@ -10,7 +10,7 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611161340',
+  version: '202611161342',
   archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json"},
   tamanos: {"escena": 8909900, "escena_movil": 2655720, "horneada": 9960704},
 };
@@ -484,7 +484,7 @@ if (SITIO) {
   // quedan dos recorridos 3D en memoria, Safari cierra la pestaña).
   let soltado = false;
   const soltar = () => {
-    if (soltado) return; soltado = true; renderer.setAnimationLoop(null);
+    if (soltado) return; soltado = true; renderer.setAnimationLoop(null); renderer.onDeviceLost = () => {};   // la placa se suelta a propósito: sin aviso de error
     try { renderer.dispose(); } catch (e) {}
     try { const b = renderer.backend; if (b.device) b.device.destroy(); else if (b.gl) { const x = b.gl.getExtension('WEBGL_lose_context'); if (x) x.loseContext(); } } catch (e) {}
   };
