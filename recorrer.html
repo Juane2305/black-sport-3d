@@ -460,13 +460,18 @@ if (SITIO) {
   document.title = SITIO.titulo || document.title; panel.querySelector('h1').textContent = SITIO.titulo || 'Recorrer';
   // Foto 360: vuelve al punto de foto más cercano, mirando hacia el mismo lado
   const f360 = document.getElementById('foto360'); f360.hidden = Q.get('ui') === '0';
+  // Si el visor la abrió encima (compu), le avisa y el visor la cierra; si no, cambia de página.
+  const dentro = window.parent !== window && (() => { try { return window.parent.location.origin === location.origin; } catch (e) { return false; } })();
+  const avisar = (d) => { try { document.exitPointerLock(); } catch (e) {} window.parent.postMessage(d, location.origin); };
   f360.onclick = (e) => {
     e.preventDefault(); let mejor = datos.puntos[0], dm = Infinity;
     for (const p of datos.puntos) { const d = Math.hypot(p.x - pos.x, p.z - pos.z); if (d < dm) { dm = d; mejor = p; } }
-    location.href = `${SITIO.volver}?punto=${mejor.id}&giro=${(yaw * 180 / Math.PI).toFixed(1)}&inclinacion=${(pitch * 180 / Math.PI).toFixed(1)}`;
+    const g = +(yaw * 180 / Math.PI).toFixed(1), i = +(pitch * 180 / Math.PI).toFixed(1);
+    if (dentro) avisar({ tipo: 'foto360', punto: mejor.id, giro: g, inclinacion: i });
+    else location.href = `${SITIO.volver}?punto=${mejor.id}&giro=${g}&inclinacion=${i}`;
   };
-  const cr = document.getElementById('creditos'); cr.hidden = false;
-  document.getElementById('verCreditos').href = `${SITIO.volver}?info=1`;
+  const cr = document.getElementById('creditos'), vc = document.getElementById('verCreditos'); cr.hidden = false;
+  vc.href = `${SITIO.volver}?info=1`; if (dentro) vc.onclick = (e) => { e.preventDefault(); avisar({ tipo: 'creditos' }); };
 }
 verMenu();
 cargando.remove(); window.demoLista = true;

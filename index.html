@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <style>:root{color-scheme:dark}html,body{margin:0;background:#0d0e10}[hidden]{display:none!important}body.saliendo #stage { opacity: 0.15; transition: opacity 0.25s; }   /* al pasar a recorrer.html */
+#marco-recorrer { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; z-index: 1000; background: #111; }
 </style>
 </head>
 <body>
@@ -1168,15 +1169,30 @@ function tweenTo(pose, dur, done) { if (REDUCED) dur = 0.01; tween = { p0: camer
 function stepTween(dt) { tween.t += dt / tween.dur; const k = ease(Math.min(1, tween.t)); camera.position.lerpVectors(tween.p0, tween.pos, k); camera.quaternion.slerpQuaternions(tween.q0, tween.quat, k); camera.fov = tween.f0 + (tween.fov - tween.f0) * k; camera.updateProjectionMatrix();
   if (tween.t >= 1) { const d = tween.done; tween = null; d && d(); } }
 let groundMode = 'walk';
-// Recorrer (desde el 16/11/2026) es una página aparte, con el motor WebGPU, la luz horneada, relieve, reflejos y espejos
-// reales. Se abre en el mismo lugar y mirando hacia el mismo lado. El modo Recorrer viejo de esta página queda solo
-// como respaldo si no hay fotos 360. Vista aérea sigue acá.
+// Recorrer (desde el 16/11/2026) es una página aparte, recorrer.html, con el motor WebGPU, la luz horneada, relieve,
+// reflejos y espejos reales. Se abre en el mismo lugar y mirando hacia el mismo lado. El modo Recorrer viejo de esta
+// página queda solo como respaldo si no hay fotos 360. Vista aérea sigue acá.
+// En la compu se abre encima de este visor, que queda cargado y quieto: volver a Foto 360 es instantáneo. En el celular
+// se cambia de página, para no tener dos 3D en memoria a la vez.
+let marcoRecorrer = null;
 function irARecorrer() {
   if (!PANO.available) { setMode('walk'); return; }
   const g = (player.yaw * 180 / Math.PI).toFixed(1), i = (player.pitch * 180 / Math.PI).toFixed(1);
-  document.body.classList.add('saliendo');
-  location.href = `recorrer.html?cam=${player.x.toFixed(2)},${player.z.toFixed(2)},1.6,${g},${i}`;
+  const url = `recorrer.html?cam=${player.x.toFixed(2)},${player.z.toFixed(2)},1.6,${g},${i}`;
+  if (TOUCH) { document.body.classList.add('saliendo'); location.href = url; return; }
+  closeSheet(); keys.clear();
+  marcoRecorrer = document.createElement('iframe'); marcoRecorrer.id = 'marco-recorrer'; marcoRecorrer.title = 'Recorrer';
+  marcoRecorrer.allow = 'fullscreen'; marcoRecorrer.src = url; document.body.appendChild(marcoRecorrer); marcoRecorrer.focus();
 }
+// recorrer.html avisa cuando hay que volver: a una foto 360 (punto y hacia dónde mira) o a los créditos
+addEventListener('message', (e) => {
+  if (!marcoRecorrer || e.source !== marcoRecorrer.contentWindow || e.origin !== location.origin) return;
+  const d = e.data || {}; if (d.tipo !== 'foto360' && d.tipo !== 'creditos') return;
+  marcoRecorrer.remove(); marcoRecorrer = null; markDirty();
+  if (d.tipo === 'creditos') { openSheet('info'); return; }
+  const pt = PANO.by[d.punto] || nearestPano(player.x, player.z);
+  enterPano({ pt, yaw: d.giro * Math.PI / 180, pitch: d.inclinacion * Math.PI / 180, instant: true });
+});
 addEventListener('pageshow', () => document.body.classList.remove('saliendo'));   // al volver con el botón Atrás
 function modeButtons() { for (const [id, m] of [['#m-pano', 'pano'], ['#m-walk', 'walk'], ['#m-air', 'air']]) $(id).setAttribute('aria-pressed', String(mode === m)); }
 function setMode(m, instant = false) {
@@ -1693,6 +1709,7 @@ function leavePano() {
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
+  if (marcoRecorrer) { last = now; return; }          // con Recorrer abierto encima, este visor no dibuja
   const dt = Math.min(0.05, (now - last) / 1000); last = now; let active = false;
   if (tween) { stepTween(dt); active = true; }
   else if (mode === 'pano') { if (panoStep(dt)) active = true; if (!PANO.trans && panoKeys(dt)) active = true; applyWalkCam(); }
