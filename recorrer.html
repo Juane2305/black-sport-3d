@@ -10,7 +10,7 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611161342',
+  version: '202611161344',
   archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json"},
   tamanos: {"escena": 8909900, "escena_movil": 2655720, "horneada": 9960704},
 };
@@ -88,6 +88,7 @@ const falla = (e) => { cargando.textContent = 'No se pudo armar la demo: ' + (e 
 const SITIO = window.SITIO || null;
 const ARCH = Object.assign({ colisiones: 'splat_colisiones.json', manifiesto: 'salida/manifest.json', escena: 'escena.glb', luces: 'config.json' }, SITIO && SITIO.archivos);
 const AJUSTES = !SITIO || Q.get('ajustes') === '1';      // en el sitio, los deslizadores y los cuadros por segundo solo con ?ajustes=1
+if (SITIO) cargando.textContent = 'Cargando el recorrido…';
 const TACTIL = matchMedia('(pointer: coarse)').matches || Q.get('movil') === '1';
 // En el sitio, cada versión pide sus archivos con ?v=…: así una página nueva nunca usa un archivo viejo guardado por el navegador.
 const conV = (u) => SITIO && SITIO.version ? u + (u.includes('?') ? '&' : '?') + 'v=' + SITIO.version : u;
