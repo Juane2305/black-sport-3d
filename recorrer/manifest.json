@@ -1,11 +1,19 @@
 {
  "codificacion": 0.12,
+ "horneada": "escena_horneada.glb",
  "atlas": {
-  "env": "../baked/lm_env_202610251932.webp",
-  "detalle": "../baked/lm_detalle_202610251932.webp",
-  "equipo": "../baked/lm_equipo_202610251932.webp",
-  "piso": "../baked/lm_piso_202610251932.webp",
-  "piso_equipo": "../baked/lm_piso_equipo_202610251932.webp"
+  "env": "../baked/lm_env_202611162354.webp",
+  "detalle": "../baked/lm_detalle_202611162354.webp",
+  "equipo": "../baked/lm_equipo_202611162354.webp",
+  "piso": "../baked/lm_piso_202611162354.webp",
+  "piso_equipo": "../baked/lm_piso_equipo_202611162354.webp"
+ },
+ "atlas_movil": {
+  "env": "../baked/lm_env_movil_202611162354.webp",
+  "detalle": "../baked/lm_detalle_movil_202611162354.webp",
+  "equipo": "../baked/lm_equipo_movil_202611162354.webp",
+  "piso": "../baked/lm_piso_movil_202611162354.webp",
+  "piso_equipo": "../baked/lm_piso_equipo_movil_202611162354.webp"
  },
  "objetos": {
   "base|A_bacha_0": "detalle",
@@ -26,9 +34,13 @@
   "base|band": "env",
   "base|benchWood": "detalle",
   "base|blackMetal": "detalle",
+  "base|blackTurf": "env",
+  "base|brick": "env",
   "base|concrete": "env",
   "base|deskBody": "detalle",
   "base|deskWood": "detalle",
+  "base|divBody": "detalle",
+  "base|divTop": "detalle",
   "base|door": "detalle",
   "base|epdm": "piso",
   "base|gravel": "env",
@@ -47,6 +59,7 @@
   "base|sidewalk": "env",
   "base|speaker": "detalle",
   "base|stones": "env",
+  "base|stoneWall": "env",
   "base|trunk": "detalle",
   "base|turf": "piso",
   "base|wall": "env",
@@ -168,40 +181,5 @@
   "equip|padBlack": "equipo",
   "equip|yogaMat": "equipo",
   "ceil|roofIn": "env"
- },
- "atlas_movil": {
-  "env": "../baked/lm_env_movil_202610251932.webp",
-  "detalle": "../baked/lm_detalle_movil_202610251932.webp",
-  "equipo": "../baked/lm_equipo_movil_202610251932.webp",
-  "piso": "../baked/lm_piso_movil_202610251932.webp",
-  "piso_equipo": "../baked/lm_piso_equipo_movil_202610251932.webp"
- },
- "blender": "5.2.3 LTS",
- "preset": "maxima",
- "dispositivo": "GPU METAL",
- "segundos": 1432,
- "estadisticas": {
-  "env": [
-   0.22126726806163788,
-   9.645215034484863
-  ],
-  "detalle": [
-   0.0,
-   2.1548521518707275
-  ],
-  "equipo": [
-   0.0,
-   1.279201865196228
-  ],
-  "piso": [
-   3.5115139484405518,
-   4.486778259277344
-  ],
-  "piso_equipo": [
-   3.0906691551208496,
-   4.474259376525879
-  ]
- },
- "horneada": "escena_horneada.glb",
- "nota": "Luz horneada del 25/10/2026 (versión 15). Los atlas son los mismos WebP del visor (carpeta baked/)."
+ }
 }

@@ -10,9 +10,9 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611161344',
+  version: '202611170418',
   archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json"},
-  tamanos: {"escena": 8909900, "escena_movil": 2655720, "horneada": 9960704},
+  tamanos: {"escena": 11789952, "escena_movil": 3703176, "horneada": 9975100},
 };
 </script>
 <style>
@@ -371,7 +371,7 @@ const ponerAmbiente = () => {
     const m = o.isMesh && o.material; if (!m || !m.isMeshStandardMaterial || visto.has(m)) return; visto.add(m);
     if (m.lightMap && m.metalness <= 0.5) {
       const relieve = !!(m.normalMap || m.bumpMap);
-      let c = (K0base || K1) ? conBrillo(m, /\|(wall|roofIn|roofFlat|marble)$/.test(o.name)) : materialColor.rgb;
+      let c = (K0base || K1) ? conBrillo(m, /\|(wall|roofIn|roofFlat|marble|brick)$/.test(o.name)) : materialColor.rgb;
       if (relieve) { c = c.mul(factorRelieve()); nRelieve++; }
       const piso = reflejoRT && PISOS.test(o.name);
       if (piso) { m.emissiveNode = reflejoNodo(); nPisos++; if (VER === 'reflejo') c = vec3(0); else c = c.add(brilloLuces().mul(LISURA.oneMinus())); }
