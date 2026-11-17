@@ -1,229 +1,232 @@
 {
-  "proyecto": "Black Sport",
-  "nota": "Coordenadas en metros del visor (x largo, y altura, z ancho). bake.py las pasa a Blender.",
-  "codificacion": 0.12,
-  "sol": {
-    "dir": [
-      0.72,
-      0.55,
-      -0.42
-    ],
-    "fuerza": 3.0,
-    "angulo_grados": 0.6
-  },
-  "cielo": {
-    "color": [
-      0.62,
-      0.72,
-      0.86
-    ],
-    "fuerza": 0.7
-  },
-  "paneles": {
-    "filas_z": [
-      4.4,
-      10.1
-    ],
-    "xs": [
-      4.45,
-      8.95,
-      13.45,
-      17.95,
-      22.45,
-      26.95
-    ],
-    "y": 5.495,
-    "tam": [
-      0.56,
-      1.16
-    ],
-    "watts": 450
-  },
-  "led": {
-    "y": 4.82,
-    "corridas": [
-      [
-        0.1,
-        0.12,
-        9.1,
-        0.12,
-        "+z"
-      ],
-      [
-        9.08,
-        0.1,
-        9.08,
-        1.6,
-        "-x"
-      ],
-      [
-        9.2,
-        1.62,
-        30.86,
-        1.62,
-        "+z"
-      ],
-      [
-        0.1,
-        12.88,
-        30.86,
-        12.88,
-        "-z"
-      ],
-      [
-        0.12,
-        0.1,
-        0.12,
-        12.9,
-        "+x"
-      ],
-      [
-        30.86,
-        1.62,
-        30.86,
-        12.88,
-        "-x"
-      ]
-    ],
-    "separacion_pared": 0.07,
-    "watts_por_metro_abajo": 32.0,
-    "watts_por_metro_arriba": 16.0
-  },
-  "panel_banos": {
-    "posiciones": [
-      [
-        2.2,
-        0.8
-      ],
-      [
-        3.6,
-        0.8
-      ],
-      [
-        6.9,
-        2.4
-      ],
-      [
-        8.4,
-        2.4
-      ],
-      [
-        1.0,
-        11.8
-      ],
-      [
-        2.6,
-        11.8
-      ],
-      [
-        2.3,
-        9.6
-      ]
-    ],
-    "y": 2.788,
-    "tam": 0.4,
-    "watts": 50
-  },
-  "ocultar_en_horneado": [
-    "led",
-    "lightEmit",
-    "exitSign",
-    "screen",
-    "sign",
-    "window",
-    "wash",
-    "blob"
+ "proyecto": "Black Sport",
+ "nota": "Coordenadas en metros del visor (x largo, y altura, z ancho). bake.py las pasa a Blender.",
+ "codificacion": 0.12,
+ "sol": {
+  "dir": [
+   0.72,
+   0.55,
+   -0.42
   ],
-  "no_hornear": [
-    "glass",
-    "steel",
-    "skylight",
-    "ground",
-    "neighbor",
-    "mirrorWcB",
-    "mirrorWcC",
-    "mirrorHallB",
-    "mirrorHallC",
-    "roof"
+  "fuerza": 3.0,
+  "angulo_grados": 0.6
+ },
+ "cielo": {
+  "color": [
+   0.62,
+   0.72,
+   0.86
   ],
-  "atlas_env": [
-    "rubber",
-    "epdm",
-    "turf",
-    "woodFloor",
-    "wcFloor",
-    "stones",
-    "concrete",
-    "path",
-    "gravel",
-    "sidewalk",
-    "asphalt",
-    "wall",
-    "perim",
-    "marble",
-    "band",
-    "roofIn",
-    "roofFlat",
-    "wcCeil"
+  "fuerza": 0.7
+ },
+ "paneles": {
+  "filas_z": [
+   4.4,
+   10.1
   ],
-  "presets": {
-    "prueba": {
-      "muestras": 6,
-      "env": 256,
-      "detalle": 128,
-      "equipo": 128,
-      "piso": 128,
-      "denoise": true
-    },
-    "vista": {
-      "muestras": 24,
-      "env": 512,
-      "detalle": 256,
-      "equipo": 512,
-      "piso": 512,
-      "denoise": true
-    },
-    "media": {
-      "muestras": 256,
-      "env": 1024,
-      "detalle": 512,
-      "equipo": 1024,
-      "piso": 1024,
-      "denoise": true
-    },
-    "alta": {
-      "muestras": 1024,
-      "env": 2048,
-      "detalle": 1024,
-      "equipo": 2048,
-      "piso": 2048,
-      "muestras_equipo": 512,
-      "muestras_piso": 512,
-      "denoise": true
-    },
-    "maxima": {
-      "muestras": 1024,
-      "env": 4096,
-      "detalle": 2048,
-      "equipo": 4096,
-      "piso": 4096,
-      "muestras_equipo": 512,
-      "muestras_piso": 512,
-      "denoise": true
-    }
+  "xs": [
+   4.45,
+   8.95,
+   13.45,
+   17.95,
+   22.45,
+   26.95
+  ],
+  "y": 5.495,
+  "tam": [
+   0.56,
+   1.16
+  ],
+  "watts": 450
+ },
+ "led": {
+  "y": 4.82,
+  "corridas": [
+   [
+    0.1,
+    0.12,
+    9.1,
+    0.12,
+    "+z"
+   ],
+   [
+    9.08,
+    0.1,
+    9.08,
+    1.6,
+    "-x"
+   ],
+   [
+    9.2,
+    1.62,
+    30.86,
+    1.62,
+    "+z"
+   ],
+   [
+    0.1,
+    12.88,
+    30.86,
+    12.88,
+    "-z"
+   ],
+   [
+    0.12,
+    0.1,
+    0.12,
+    12.9,
+    "+x"
+   ],
+   [
+    30.86,
+    1.62,
+    30.86,
+    12.88,
+    "-x"
+   ]
+  ],
+  "separacion_pared": 0.07,
+  "watts_por_metro_abajo": 32.0,
+  "watts_por_metro_arriba": 16.0
+ },
+ "panel_banos": {
+  "posiciones": [
+   [
+    2.2,
+    0.8
+   ],
+   [
+    3.6,
+    0.8
+   ],
+   [
+    6.9,
+    2.4
+   ],
+   [
+    8.4,
+    2.4
+   ],
+   [
+    1.0,
+    11.8
+   ],
+   [
+    2.6,
+    11.8
+   ],
+   [
+    2.3,
+    9.6
+   ]
+  ],
+  "y": 2.788,
+  "tam": 0.4,
+  "watts": 50
+ },
+ "ocultar_en_horneado": [
+  "led",
+  "lightEmit",
+  "exitSign",
+  "screen",
+  "sign",
+  "window",
+  "wash",
+  "blob"
+ ],
+ "no_hornear": [
+  "glass",
+  "steel",
+  "skylight",
+  "ground",
+  "neighbor",
+  "mirrorWcB",
+  "mirrorWcC",
+  "mirrorHallB",
+  "mirrorHallC",
+  "roof"
+ ],
+ "atlas_env": [
+  "rubber",
+  "epdm",
+  "turf",
+  "woodFloor",
+  "wcFloor",
+  "stones",
+  "concrete",
+  "path",
+  "gravel",
+  "sidewalk",
+  "asphalt",
+  "wall",
+  "perim",
+  "marble",
+  "band",
+  "roofIn",
+  "roofFlat",
+  "wcCeil",
+  "blackTurf",
+  "brick",
+  "stoneWall"
+ ],
+ "presets": {
+  "prueba": {
+   "muestras": 6,
+   "env": 256,
+   "detalle": 128,
+   "equipo": 128,
+   "piso": 128,
+   "denoise": true
   },
-  "atlas_piso": [
-    "rubber",
-    "epdm",
-    "turf",
-    "woodFloor"
-  ],
-  "nota_piso": "El piso se hornea dos veces: con el equipamiento (sombras de las máquinas) y sin él; el visor cambia según se muestre o no.",
-  "movil": {
-    "env": 2048,
-    "detalle": 1024,
-    "equipo": 1024,
-    "piso": 2048,
-    "piso_equipo": 2048
+  "vista": {
+   "muestras": 24,
+   "env": 512,
+   "detalle": 256,
+   "equipo": 512,
+   "piso": 512,
+   "denoise": true
+  },
+  "media": {
+   "muestras": 256,
+   "env": 1024,
+   "detalle": 512,
+   "equipo": 1024,
+   "piso": 1024,
+   "denoise": true
+  },
+  "alta": {
+   "muestras": 1024,
+   "env": 2048,
+   "detalle": 1024,
+   "equipo": 2048,
+   "piso": 2048,
+   "muestras_equipo": 512,
+   "muestras_piso": 512,
+   "denoise": true
+  },
+  "maxima": {
+   "muestras": 1024,
+   "env": 4096,
+   "detalle": 2048,
+   "equipo": 4096,
+   "piso": 4096,
+   "muestras_equipo": 512,
+   "muestras_piso": 512,
+   "denoise": true
   }
+ },
+ "atlas_piso": [
+  "rubber",
+  "epdm",
+  "turf",
+  "woodFloor"
+ ],
+ "nota_piso": "El piso se hornea dos veces: con el equipamiento (sombras de las máquinas) y sin él; el visor cambia según se muestre o no.",
+ "movil": {
+  "env": 2048,
+  "detalle": 1024,
+  "equipo": 1024,
+  "piso": 2048,
+  "piso_equipo": 2048
+ }
 }
