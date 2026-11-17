@@ -2,18 +2,18 @@
  "codificacion": 0.12,
  "horneada": "escena_horneada.glb",
  "atlas": {
-  "env": "../baked/lm_env_202611162153.webp",
-  "detalle": "../baked/lm_detalle_202611162153.webp",
-  "equipo": "../baked/lm_equipo_202611162153.webp",
-  "piso": "../baked/lm_piso_202611162153.webp",
-  "piso_equipo": "../baked/lm_piso_equipo_202611162153.webp"
+  "env": "../baked/lm_env_202611162354.webp",
+  "detalle": "../baked/lm_detalle_202611162354.webp",
+  "equipo": "../baked/lm_equipo_202611162354.webp",
+  "piso": "../baked/lm_piso_202611162354.webp",
+  "piso_equipo": "../baked/lm_piso_equipo_202611162354.webp"
  },
  "atlas_movil": {
-  "env": "../baked/lm_env_movil_202611162153.webp",
-  "detalle": "../baked/lm_detalle_movil_202611162153.webp",
-  "equipo": "../baked/lm_equipo_movil_202611162153.webp",
-  "piso": "../baked/lm_piso_movil_202611162153.webp",
-  "piso_equipo": "../baked/lm_piso_equipo_movil_202611162153.webp"
+  "env": "../baked/lm_env_movil_202611162354.webp",
+  "detalle": "../baked/lm_detalle_movil_202611162354.webp",
+  "equipo": "../baked/lm_equipo_movil_202611162354.webp",
+  "piso": "../baked/lm_piso_movil_202611162354.webp",
+  "piso_equipo": "../baked/lm_piso_equipo_movil_202611162354.webp"
  },
  "objetos": {
   "base|A_bacha_0": "detalle",

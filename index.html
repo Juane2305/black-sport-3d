@@ -880,7 +880,7 @@ const ASSET_DEFS = {
   cruce_poleas: { fp: [0.7, 0.59] }, inodoro: {}, bacha: {}, ducha_flor: {}, ducha_grifo: {}, tele: {}, casillero: {}, dispenser: {},
 };
 const ASSET_PARTS = {}, ASSET_FAIL = [];
-const BUILD = '20261117020633';   // cambia en cada publicación: evita que el navegador use archivos viejos de la caché
+const BUILD = '20261117041740';   // cambia en cada publicación: evita que el navegador use archivos viejos de la caché
 /* Geometría cuantizada -> copia en float32 con la transformación del nodo aplicada */
 function toFloat(a) { const n = a.count, k = a.itemSize, f = new Float32Array(n * k), get = [a.getX, a.getY, a.getZ, a.getW]; for (let i = 0; i < n; i++) for (let j = 0; j < k; j++) f[i * k + j] = get[j].call(a, i); return new THREE.BufferAttribute(f, k); }
 function plainGeo(o, attrs) {
@@ -1196,7 +1196,7 @@ let groundMode = 'walk';
 // cierra la pestaña ("Ocurrió un problema varias veces", 16/11/2026).
 // RECORRER_V es la versión de recorrer.html (window.SITIO.version, la escribe sitio/armar_pagina.py): va en la dirección
 // para que el navegador no use una copia vieja de la página, y en la precarga de sus archivos.
-const RECORRER_V = '202611170207';
+const RECORRER_V = '202611170418';
 let marcoRecorrer = null;
 function irARecorrer() {
   if (!PANO.available) { setMode('walk'); return; }
@@ -1458,7 +1458,7 @@ function render() {
    ============================================================ */
 const PANO = { available: false, pts: [], by: {}, cur: null, trans: null, busy: false, queue: null, tex: new Map(), cubes: new Map(),
   scene: null, sphere: null, spots: null, hover: null, equipBefore: true, fadeOut: null, small: false, keep: 3 };
-const PANO_DIR = 'panos_v5';   // carpeta publicada de las panorámicas (cambia con cada tanda de renders)
+const PANO_DIR = 'panos_v6';   // carpeta publicada de las panorámicas (cambia con cada tanda de renders)
 // Inicio: el patio, salvo que la dirección diga otro punto (?punto=sala_e&giro=90&inclinacion=0, en grados).
 // Así vuelve el modo Recorrer (recorrer.html) al punto más cercano y mirando hacia el mismo lado.
 const PANO_START = (() => { const q = new URLSearchParams(location.search), g = parseFloat(q.get('giro')), i = parseFloat(q.get('inclinacion'));
