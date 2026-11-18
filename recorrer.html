@@ -10,7 +10,7 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611181439',
+  version: '202611181513',
   archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json", "persona": "recorrer/persona.glb"},
   tamanos: {"escena": 11789952, "escena_movil": 3703176, "horneada": 9975100},
 };
@@ -501,7 +501,8 @@ renderer.setAnimationLoop((ahora) => {
     persona.position.set(pos.x, pos.y - OJOS_PERSONA, pos.z); persona.rotation.y = yaw + Math.PI;      // el modelo mira hacia +Z; la cámara, hacia −Z
     if (!xListo) { xAntes.copy(pos); xListo = true; }
     const vel = Math.hypot(pos.x - xAntes.x, pos.z - xAntes.z) / Math.max(dt, 1e-3); xAntes.copy(pos);
-    andar += (Math.min(1, vel / 1.2) - andar) * Math.min(1, dt * 8);                                   // pasa suave de quieto a caminar
+    andar += (Math.min(1, vel / 1.2) - andar) * Math.min(1, dt * 8);
+    if (Q.get('andar')) andar = +Q.get('andar');                                                      // ?andar=1: caminando fijo, para capturas                                   // pasa suave de quieto a caminar
     if (aCaminar) { aCaminar.setEffectiveWeight(andar); aCaminar.timeScale = 0.6 + 0.6 * Math.min(1.6, vel / 2.2); }
     if (aQuieto) aQuieto.setEffectiveWeight(1 - andar);
     mezclador.update(dt);
