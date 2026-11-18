@@ -10,7 +10,7 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611182016',
+  version: '202611182026',
   archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json", "persona": null},
   tamanos: {"escena": 11789952, "escena_movil": 3703176, "horneada": 9975100},
 };
@@ -153,15 +153,19 @@ const aDecimales = (g) => {
   }
   return g;
 };
-// Techo de chapa: al caminar se veía un hormigueo, sobre todo en el borde, junto a las tiras LED (Juane, 18/11). La luz
-// horneada del techo trae las ondas de la chapa, pero con 4 puntos por onda: quedan rayas irregulares muy contrastadas que,
-// de lejos, bailan de un cuadro al otro. Para el techo se usa una copia de esa luz a un cuarto de tamaño (las rayas se
-// promedian, la caída de luz de las tiras queda igual) y se le saca el brillo de las luces. ?techo=0 vuelve a lo anterior.
-const TECHO_SUAVE = Q.get('techo') !== '0'; const TECHO_DIV = +(Q.get('techoDiv') ?? 8);
+// Techo de chapa: al caminar se veía un borde dentado y con "pelos" que baila, justo arriba de las tiras LED (Juane, 18/11,
+// con captura). Es la luz horneada: la tira ilumina la chapa casi de costado, cada onda queda con la cresta encendida y el
+// valle en sombra, y con 5 puntos por onda eso sale como un peine irregular. Para el techo se usa una copia de esa luz
+// promediada A LO LARGO de la nave (varias ondas juntas) y entera a lo ancho (la caída de luz desde la tira no se toca).
+// OJO: depende de cómo quedó acomodado el techo en la textura de este horneado (el largo de la nave en vertical). Si otro
+// horneado lo acomoda girado, hay que cambiar TECHO_EJE a 'x'. La solución de fondo es hornear el techo sin el relieve
+// de la chapa (pendiente en bake.py). ?techo=0 vuelve a lo anterior.
+const TECHO_SUAVE = Q.get('techo') !== '0', TECHO_DIV = +(Q.get('techoDiv') ?? 16), TECHO_EJE = Q.get('techoEje') || 'y';
 const luzSuave = (lm) => {
   try {
-    const lado = Math.max(256, Math.round(lm.image.width / TECHO_DIV)), lienzo = document.createElement('canvas'); lienzo.width = lienzo.height = lado;
-    const g = lienzo.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(lm.image, 0, 0, lado, lado);
+    const w = lm.image.width, h = lm.image.height, lienzo = document.createElement('canvas');
+    lienzo.width = Math.max(64, Math.round(w / (TECHO_EJE === 'x' ? TECHO_DIV : 2))); lienzo.height = Math.max(64, Math.round(h / (TECHO_EJE === 'y' ? TECHO_DIV : 2)));
+    const g = lienzo.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(lm.image, 0, 0, lienzo.width, lienzo.height);
     const t = new THREE.CanvasTexture(lienzo); t.flipY = lm.flipY; t.colorSpace = lm.colorSpace; t.channel = lm.channel; t.anisotropy = 8; return t;
   } catch (e) { console.warn('Techo: no se pudo suavizar la luz horneada', e); return lm; }
 };
@@ -206,7 +210,13 @@ raiz.traverse((o) => {
   const k = o.name.split('|')[1] || o.name;
   if (k === 'led') emisor(o, 9); else if (k === 'lightEmit') emisor(o, 6);   // las mismas fuerzas de emisión que en Blender
   else if (k === 'ground' || k === 'neighbor') exterior(o, k === 'neighbor');
-  else if (k === 'roof') { o.material = o.material.clone(); o.material.side = THREE.BackSide; plano(o, 0.5); }
+  else if (k === 'roof') {
+    o.material = o.material.clone(); o.material.side = THREE.BackSide; plano(o, 0.5);
+    // La chapa original y su copia horneada (roofIn) están en el mismo lugar. Sin esto se pelean por quién va adelante y
+    // el techo se llena de parches oscuros dentados que cambian con cada paso (lo vio Juane el 18/11, sobre todo en el borde
+    // junto a las tiras LED, donde la copia horneada es clara y la original oscura). La original se empuja hacia atrás.
+    if (Q.get('techoPelea') !== '1') { o.material.polygonOffset = true; o.material.polygonOffsetFactor = 4; o.material.polygonOffsetUnits = 8; }
+  }
   else if (k.startsWith('mirror')) espejos.push(o);
 });
 for (const o of espejos) {
