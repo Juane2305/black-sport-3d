@@ -10,7 +10,7 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611181943',
+  version: '202611182016',
   archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json", "persona": null},
   tamanos: {"escena": 11789952, "escena_movil": 3703176, "horneada": 9975100},
 };
@@ -153,6 +153,18 @@ const aDecimales = (g) => {
   }
   return g;
 };
+// Techo de chapa: al caminar se veía un hormigueo, sobre todo en el borde, junto a las tiras LED (Juane, 18/11). La luz
+// horneada del techo trae las ondas de la chapa, pero con 4 puntos por onda: quedan rayas irregulares muy contrastadas que,
+// de lejos, bailan de un cuadro al otro. Para el techo se usa una copia de esa luz a un cuarto de tamaño (las rayas se
+// promedian, la caída de luz de las tiras queda igual) y se le saca el brillo de las luces. ?techo=0 vuelve a lo anterior.
+const TECHO_SUAVE = Q.get('techo') !== '0'; const TECHO_DIV = +(Q.get('techoDiv') ?? 8);
+const luzSuave = (lm) => {
+  try {
+    const lado = Math.max(256, Math.round(lm.image.width / TECHO_DIV)), lienzo = document.createElement('canvas'); lienzo.width = lienzo.height = lado;
+    const g = lienzo.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(lm.image, 0, 0, lado, lado);
+    const t = new THREE.CanvasTexture(lienzo); t.flipY = lm.flipY; t.colorSpace = lm.colorSpace; t.channel = lm.channel; t.anisotropy = 8; return t;
+  } catch (e) { console.warn('Techo: no se pudo suavizar la luz horneada', e); return lm; }
+};
 const conLuz = (mat, lm) => { const m = mat.clone(); m.lightMap = lm; m.lightMapIntensity = intensidad; return m; };
 horneada.scene.traverse((o) => {
   if (!o.isMesh) return;
@@ -161,7 +173,7 @@ horneada.scene.traverse((o) => {
   const geo = aDecimales(o.geometry.clone()).applyMatrix4(o.matrixWorld);
   if (o.name === 'ceil|roofIn') {
     const techo = porNombre.get('ceil|roof'); if (!techo) return;
-    const m = conLuz(techo.material, atlas[a]); m.side = THREE.FrontSide;
+    const m = conLuz(techo.material, TECHO_SUAVE ? luzSuave(atlas[a]) : atlas[a]); m.side = THREE.FrontSide;
     const dentro = new THREE.Mesh(geo, m); dentro.name = o.name; scene.add(dentro); nHorneadas++; return;
   }
   const t = porNombre.get(o.name); if (!t) { sinPar.push(o.name); return; }
@@ -433,7 +445,7 @@ const ponerAmbiente = () => {
       const piso = reflejoRT && PISOS.test(o.name) && !goma;
       if (goma) c = c.add(brilloLuces().mul(BRILLO_GOMA));
       else if (piso) { m.emissiveNode = reflejoNodo(); nPisos++; if (VER === 'reflejo') c = vec3(0); else c = c.add(brilloLuces().mul(LISURA.oneMinus())); }
-      else c = c.add(brilloLuces());
+      else if (!(TECHO_SUAVE && o.name === 'ceil|roofIn')) c = c.add(brilloLuces());
       if (KSOL > 0 && /^piso/.test(man.objetos[o.name] || '')) c = c.add(brilloSol(m));      // solo los pisos de la sala (atlas piso)
       m.colorNode = vec4(c, materialColor.a);
       if (VER === 'sol' && /^piso/.test(man.objetos[o.name] || '')) { m.colorNode = vec4(0, 0, 0, materialColor.a); m.emissiveNode = brilloSol(m); }
