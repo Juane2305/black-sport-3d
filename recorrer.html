@@ -10,8 +10,8 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611181401',
-  archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json"},
+  version: '202611181438',
+  archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json", "persona": "recorrer/persona.glb"},
   tamanos: {"escena": 11789952, "escena_movil": 3703176, "horneada": 9975100},
 };
 </script>
@@ -86,7 +86,7 @@ const falla = (e) => { cargando.textContent = 'No se pudo armar la demo: ' + (e 
 // En la carpeta del horneado los archivos están sueltos. En el sitio, recorrer.html define window.SITIO con sus rutas,
 // la página a la que vuelve el botón Foto 360 y la de créditos.
 const SITIO = window.SITIO || null;
-const ARCH = Object.assign({ colisiones: 'splat_colisiones.json', manifiesto: 'salida/manifest.json', escena: 'escena.glb', luces: 'config.json' }, SITIO && SITIO.archivos);
+const ARCH = Object.assign({ colisiones: 'splat_colisiones.json', manifiesto: 'salida/manifest.json', escena: 'escena.glb', luces: 'config.json', persona: 'persona.glb' }, SITIO && SITIO.archivos);
 const AJUSTES = !SITIO || Q.get('ajustes') === '1';      // en el sitio, los deslizadores y los cuadros por segundo solo con ?ajustes=1
 if (SITIO) cargando.textContent = 'Cargando el recorrido…';
 const TACTIL = matchMedia('(pointer: coarse)').matches || Q.get('movil') === '1';
@@ -168,7 +168,8 @@ horneada = base = mapas = null;     // la geometría original (ya copiada a deci
 // Lo que no se horneó: emisores, vidrio, contexto exterior y espejos
 const emisor = (o, f) => { const c = (o.material.emissive && o.material.emissive.getHex() ? o.material.emissive : o.material.color).clone().multiplyScalar(f); o.material = new THREE.MeshBasicMaterial({ color: c, map: o.material.emissiveMap || o.material.map || null }); };
 const plano = (o, f) => { o.material = new THREE.MeshBasicMaterial({ color: o.material.color.clone().multiplyScalar(f), map: o.material.map || null, side: o.material.side }); };
-const espejos = [];
+const espejos = [], reflectores = [];
+const ALTO_PERSONA = +(Q.get('alto') ?? 1.74), OJOS_PERSONA = ALTO_PERSONA * 0.935;
 raiz.traverse((o) => {
   if (!o.isMesh || o.userData.horneada) return;
   const k = o.name.split('|')[1] || o.name;
@@ -181,6 +182,7 @@ for (const o of espejos) {
   o.geometry.computeBoundingBox(); const centro = o.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(o.matrixWorld);
   const n = new THREE.Vector3().fromBufferAttribute(o.geometry.attributes.normal, 0).transformDirection(o.matrixWorld);
   const r = reflector({ resolutionScale: 1, samples: +(Q.get('muestras') ?? 4), bounces: Q.get('rebotes') === '1' });
+  reflectores.push(r);
   r.target.position.copy(centro).addScaledVector(n, 0.004); r.target.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n); scene.add(r.target); r.target.updateMatrixWorld(true);
   (window.infoEspejos = window.infoEspejos || []).push(o.name + ' n=' + n.toArray().map((v) => v.toFixed(2)) + ' c=' + centro.toArray().map((v) => v.toFixed(2)));
   const m = new THREE.MeshBasicNodeMaterial(); m.colorNode = r.rgb.mul(0.92); o.material = m;
@@ -397,6 +399,29 @@ pieza(new THREE.SphereGeometry(0.105, 24, 16), piel, 0); pieza(new THREE.Capsule
 pieza(new THREE.CapsuleGeometry(0.05, 0.5, 6, 12), ropa, -0.55).position.x = -0.26; pieza(new THREE.CapsuleGeometry(0.05, 0.5, 6, 12), ropa, -0.55).position.x = 0.26;
 if (Q.get('avatar') !== '0') scene.add(avatar);
 
+// ---------- persona en los espejos ----------
+// Un modelo con esqueleto (persona.glb, con animaciones de quieto y de caminar) reemplaza a la figura simple.
+// Va en la capa 1: la cámara principal no lo dibuja (estaría adentro de la cabeza) y las cámaras de los espejos sí.
+// Si el archivo no está o falla, queda la figura simple. ?persona=0 la saca.
+let persona = null, mezclador = null, aQuieto = null, aCaminar = null, andar = 0;
+const xAntes = new THREE.Vector3(); let xListo = false;
+if (Q.get('avatar') !== '0' && Q.get('persona') !== '0') {
+  gl.loadAsync(conV(ARCH.persona)).then((g) => {
+    const m = g.scene; m.updateMatrixWorld(true);
+    const caja = new THREE.Box3().setFromObject(m), alto = caja.max.y - caja.min.y;
+    m.scale.multiplyScalar(ALTO_PERSONA / alto);                       // ojos a la altura de la cámara
+    m.traverse((o) => { o.layers.set(1); if (o.isMesh) o.frustumCulled = false; });
+    const busca = (re) => g.animations.find((c) => re.test(c.name));
+    mezclador = new THREE.AnimationMixer(m);
+    const cq = busca(/idle|quieto|stand/i), cc = busca(/walk|camin/i);
+    if (cq) { aQuieto = mezclador.clipAction(cq); aQuieto.play(); }
+    if (cc) { aCaminar = mezclador.clipAction(cc); aCaminar.play(); aCaminar.setEffectiveWeight(0); }
+    persona = m; scene.add(m); scene.remove(avatar);
+    for (const r of reflectores) r.reflector.getVirtualCamera(camera).layers.enable(1);
+    window.persona = { alto: +alto.toFixed(2), animaciones: g.animations.map((c) => c.name) };
+  }).catch((e) => { window.persona = { error: String(e).slice(0, 120) }; });
+}
+
 // ---------- caminata ----------
 let yaw = Math.PI / 2, pitch = 0, altura = 1.6;
 const pos = new THREE.Vector3(29.8, altura, 8.6);
@@ -469,6 +494,15 @@ renderer.setAnimationLoop((ahora) => {
   }
   pos.y = altura; camera.position.copy(pos); camera.rotation.set(pitch, yaw, 0);
   avatar.position.copy(pos); avatar.rotation.y = yaw;
+  if (persona) {
+    persona.position.set(pos.x, pos.y - OJOS_PERSONA, pos.z); persona.rotation.y = yaw + Math.PI;      // el modelo mira hacia +Z; la cámara, hacia −Z
+    if (!xListo) { xAntes.copy(pos); xListo = true; }
+    const vel = Math.hypot(pos.x - xAntes.x, pos.z - xAntes.z) / Math.max(dt, 1e-3); xAntes.copy(pos);
+    andar += (Math.min(1, vel / 1.2) - andar) * Math.min(1, dt * 8);                                   // pasa suave de quieto a caminar
+    if (aCaminar) { aCaminar.setEffectiveWeight(andar); aCaminar.timeScale = 0.6 + 0.6 * Math.min(1.6, vel / 2.2); }
+    if (aQuieto) aQuieto.setEffectiveWeight(1 - andar);
+    mezclador.update(dt);
+  }
   if (!ambienteListo) { avatar.visible = false; cubo.update(renderer, scene); avatar.visible = true; ponerAmbiente(); ambienteListo = true; }
   dibujar();
   cuadros++;
