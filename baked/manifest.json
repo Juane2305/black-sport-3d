@@ -1,12 +1,12 @@
 {
- "glb": "escena_horneada_202611162354.json",
+ "glb": "escena_horneada_202611180956.json",
  "codificacion": 0.12,
  "atlas": {
-  "env": "lm_env_202611162354.webp",
-  "detalle": "lm_detalle_202611162354.webp",
-  "equipo": "lm_equipo_202611162354.webp",
-  "piso": "lm_piso_202611162354.webp",
-  "piso_equipo": "lm_piso_equipo_202611162354.webp"
+  "env": "lm_env_202611180956.webp",
+  "detalle": "lm_detalle_202611180956.webp",
+  "equipo": "lm_equipo_202611180956.webp",
+  "piso": "lm_piso_202611180956.webp",
+  "piso_equipo": "lm_piso_equipo_202611180956.webp"
  },
  "objetos": {
   "base|A_bacha_0": "detalle",
@@ -176,36 +176,36 @@
   "ceil|roofIn": "env"
  },
  "atlas_movil": {
-  "env": "lm_env_movil_202611162354.webp",
-  "detalle": "lm_detalle_movil_202611162354.webp",
-  "equipo": "lm_equipo_movil_202611162354.webp",
-  "piso": "lm_piso_movil_202611162354.webp",
-  "piso_equipo": "lm_piso_equipo_movil_202611162354.webp"
+  "env": "lm_env_movil_202611180956.webp",
+  "detalle": "lm_detalle_movil_202611180956.webp",
+  "equipo": "lm_equipo_movil_202611180956.webp",
+  "piso": "lm_piso_movil_202611180956.webp",
+  "piso_equipo": "lm_piso_equipo_movil_202611180956.webp"
  },
  "blender": "5.2.3 LTS",
  "preset": "maxima",
  "dispositivo": "GPU METAL",
- "segundos": 1454,
+ "segundos": 1659,
  "estadisticas": {
   "env": [
-   0.18115352094173431,
-   8.999053001403809
+   0.2496623545885086,
+   11.280007362365723
   ],
   "detalle": [
    0.0,
-   2.01135516166687
+   4.636295795440674
   ],
   "equipo": [
    0.0,
-   1.2180283069610596
+   1.2250676155090332
   ],
   "piso": [
-   3.2811965942382812,
-   4.429308891296387
+   3.3841910362243652,
+   6.46832275390625
   ],
   "piso_equipo": [
-   2.9346868991851807,
-   4.3788628578186035
+   3.02535343170166,
+   6.474419593811035
   ]
  }
 }
