@@ -10,7 +10,7 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611170418',
+  version: '202611181401',
   archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json"},
   tamanos: {"escena": 11789952, "escena_movil": 3703176, "horneada": 9975100},
 };
@@ -113,6 +113,8 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = +(Q.get('expo') || 0.81);     // los renders de Blender usan 0.85
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0.42, 0.62, 0.95);   // cielo celeste detrás de todo (antes quedaba negro); ?cielo=0 lo saca
+if (new URLSearchParams(location.search).get('cielo') === '0') scene.background = null;
 scene.background = new THREE.Color(0.55, 0.62, 0.72);
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 300);
 camera.rotation.order = 'YXZ';
@@ -209,6 +211,7 @@ const dibujarEscena = () => (postpro ? postpro.render() : renderer.render(scene,
 // No se usa reflector() de three.js: con la cámara casi horizontal su plano de corte oblicuo recorta toda la escena
 // y el reflejo sale negro (probado el 15/11). Acá no hace falta ese corte: lo que está a ras del piso se oculta.
 const PISOS = /\|(rubber|epdm|woodFloor|wcFloor)$/;          // pisos de adentro (el pasto y los de afuera, no)
+const GOMA = /\|(rubber|epdm)$/, BRILLO_GOMA = +(new URLSearchParams(location.search).get('goma') ?? 0.3);   // ?goma=1 la deja como el resto
 const REFLEJO = +(Q.get('reflejo') ?? 1), uReflejo = uniform(REFLEJO), ALTURA_PISO = 0;
 let reflejoRT = null;
 const camEspejo = new THREE.PerspectiveCamera(), uMatEspejo = uniform(new THREE.Matrix4());
@@ -373,8 +376,10 @@ const ponerAmbiente = () => {
       const relieve = !!(m.normalMap || m.bumpMap);
       let c = (K0base || K1) ? conBrillo(m, /\|(wall|roofIn|roofFlat|marble|brick)$/.test(o.name)) : materialColor.rgb;
       if (relieve) { c = c.mul(factorRelieve()); nRelieve++; }
-      const piso = reflejoRT && PISOS.test(o.name);
-      if (piso) { m.emissiveNode = reflejoNodo(); nPisos++; if (VER === 'reflejo') c = vec3(0); else c = c.add(brilloLuces().mul(LISURA.oneMinus())); }
+      const goma = GOMA.test(o.name);      // la goma del salón es opaca: sin espejo y con el brillo de las luces a un tercio (Juane, 17/11)
+      const piso = reflejoRT && PISOS.test(o.name) && !goma;
+      if (goma) c = c.add(brilloLuces().mul(BRILLO_GOMA));
+      else if (piso) { m.emissiveNode = reflejoNodo(); nPisos++; if (VER === 'reflejo') c = vec3(0); else c = c.add(brilloLuces().mul(LISURA.oneMinus())); }
       else c = c.add(brilloLuces());
       m.colorNode = vec4(c, materialColor.a);
       if (VER === 'luz' || (VER === 'relieve' && relieve)) { m.colorNode = vec4(0, 0, 0, materialColor.a); m.emissiveNode = VER === 'luz' ? DLUZ.mul(0.5).add(0.5) : vec3(factorRelieve().mul(0.5)); }

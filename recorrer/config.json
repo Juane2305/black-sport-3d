@@ -4,12 +4,13 @@
  "codificacion": 0.12,
  "sol": {
   "dir": [
-   0.72,
-   0.55,
-   -0.42
+   0.8,
+   0.3,
+   0.45
   ],
-  "fuerza": 3.0,
-  "angulo_grados": 0.6
+  "fuerza": 40.0,
+  "angulo_grados": 0.6,
+  "nota": "Mañana de invierno, cerca de las 10 (el frente mira al norte, 13° hacia el este; +x = frente, +z = este). Elegido por Juane el 18/11/2026."
  },
  "cielo": {
   "color": [
@@ -17,7 +18,8 @@
    0.72,
    0.86
   ],
-  "fuerza": 0.7
+  "fuerza": 3.0,
+  "tipo": "degrade"
  },
  "paneles": {
   "filas_z": [
