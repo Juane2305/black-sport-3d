@@ -10,7 +10,7 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611181351',
+  version: '202611181401',
   archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json"},
   tamanos: {"escena": 11789952, "escena_movil": 3703176, "horneada": 9975100},
 };
@@ -113,6 +113,8 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = +(Q.get('expo') || 0.81);     // los renders de Blender usan 0.85
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0.42, 0.62, 0.95);   // cielo celeste detrás de todo (antes quedaba negro); ?cielo=0 lo saca
+if (new URLSearchParams(location.search).get('cielo') === '0') scene.background = null;
 scene.background = new THREE.Color(0.55, 0.62, 0.72);
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 300);
 camera.rotation.order = 'YXZ';
