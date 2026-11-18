@@ -10,7 +10,7 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611181438',
+  version: '202611181439',
   archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json", "persona": "recorrer/persona.glb"},
   tamanos: {"escena": 11789952, "escena_movil": 3703176, "horneada": 9975100},
 };
@@ -403,6 +403,7 @@ if (Q.get('avatar') !== '0') scene.add(avatar);
 // Un modelo con esqueleto (persona.glb, con animaciones de quieto y de caminar) reemplaza a la figura simple.
 // Va en la capa 1: la cámara principal no lo dibuja (estaría adentro de la cabeza) y las cámaras de los espejos sí.
 // Si el archivo no está o falla, queda la figura simple. ?persona=0 la saca.
+const LUZ_PERSONA = +(Q.get('luzPersona') ?? 1.6);
 let persona = null, mezclador = null, aQuieto = null, aCaminar = null, andar = 0;
 const xAntes = new THREE.Vector3(); let xListo = false;
 if (Q.get('avatar') !== '0' && Q.get('persona') !== '0') {
@@ -416,6 +417,8 @@ if (Q.get('avatar') !== '0' && Q.get('persona') !== '0') {
     const cq = busca(/idle|quieto|stand/i), cc = busca(/walk|camin/i);
     if (cq) { aQuieto = mezclador.clipAction(cq); aQuieto.play(); }
     if (cc) { aCaminar = mezclador.clipAction(cc); aCaminar.play(); aCaminar.setEffectiveWeight(0); }
+    // Sin luces en la escena (la luz está horneada), la persona se ilumina con el ambiente capturado del salón.
+    m.traverse((o) => { if (!o.isMesh) return; for (const mt of [].concat(o.material)) { mt.envMap = cuboRT.texture; mt.envMapIntensity = LUZ_PERSONA; if (mt.metalness > 0.3) mt.metalness = 0.3; mt.needsUpdate = true; } });
     persona = m; scene.add(m); scene.remove(avatar);
     for (const r of reflectores) r.reflector.getVirtualCamera(camera).layers.enable(1);
     window.persona = { alto: +alto.toFixed(2), animaciones: g.animations.map((c) => c.name) };
