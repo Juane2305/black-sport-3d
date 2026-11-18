@@ -10,8 +10,8 @@
 window.SITIO = {
   titulo: "Black Sport · Recorrer",
   volver: 'index.html',
-  version: '202611181401',
-  archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json"},
+  version: '202611181943',
+  archivos: {"colisiones": "recorrer/colisiones.json", "manifiesto": "recorrer/manifest.json", "escena": "recorrer/escena.glb", "escena_movil": "recorrer/escena_movil.glb", "luces": "recorrer/config.json", "persona": null},
   tamanos: {"escena": 11789952, "escena_movil": 3703176, "horneada": 9975100},
 };
 </script>
@@ -74,7 +74,7 @@ window.SITIO = {
 <a id="foto360" href="#" hidden>← Foto 360</a>
 <script type="module">
 import * as THREE from 'three';
-import { reflector, float, vec3, vec4, uniform, normalView, normalWorld, normalWorldGeometry, directionToFaceDirection, positionWorld, positionViewDirection, materialColor, materialRoughness, materialReference, cameraViewMatrix, texture, texture3D, BRDF_GGX, pass, vec2 } from 'three/tsl';
+import { reflector, mix, mx_noise_float, uv, smoothstep, select, float, vec3, vec4, uniform, normalView, normalWorld, normalWorldGeometry, directionToFaceDirection, positionWorld, positionViewDirection, materialColor, materialRoughness, materialReference, cameraViewMatrix, texture, texture3D, BRDF_GGX, pass, vec2 } from 'three/tsl';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
@@ -86,7 +86,7 @@ const falla = (e) => { cargando.textContent = 'No se pudo armar la demo: ' + (e 
 // En la carpeta del horneado los archivos están sueltos. En el sitio, recorrer.html define window.SITIO con sus rutas,
 // la página a la que vuelve el botón Foto 360 y la de créditos.
 const SITIO = window.SITIO || null;
-const ARCH = Object.assign({ colisiones: 'splat_colisiones.json', manifiesto: 'salida/manifest.json', escena: 'escena.glb', luces: 'config.json' }, SITIO && SITIO.archivos);
+const ARCH = Object.assign({ colisiones: 'splat_colisiones.json', manifiesto: 'salida/manifest.json', escena: 'escena.glb', luces: 'config.json', persona: 'persona.glb' }, SITIO && SITIO.archivos);
 const AJUSTES = !SITIO || Q.get('ajustes') === '1';      // en el sitio, los deslizadores y los cuadros por segundo solo con ?ajustes=1
 if (SITIO) cargando.textContent = 'Cargando el recorrido…';
 const TACTIL = matchMedia('(pointer: coarse)').matches || Q.get('movil') === '1';
@@ -110,12 +110,18 @@ window.motor = renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' :
 renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = +(Q.get('expo') || 0.81);     // los renders de Blender usan 0.85
+let expoBase = +(Q.get('expo') || 0.81);     // los renders de Blender usan 0.85
+renderer.toneMappingExposure = expoBase;
+// Al salir al patio la vista se acostumbra a la luz de afuera, como el ojo o la cámara del celular: la exposición baja
+// de a poco hasta EXPO_AFUERA veces la de adentro, y vuelve al entrar. Sin esto el patio se veía quemado. ?afuera=1 lo apaga.
+const EXPO_AFUERA = +(Q.get('afuera') ?? 0.5); let expoFactor = 1, cajaTecho = null, expoLista = false;
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0.42, 0.62, 0.95);   // cielo celeste detrás de todo (antes quedaba negro); ?cielo=0 lo saca
-if (new URLSearchParams(location.search).get('cielo') === '0') scene.background = null;
-scene.background = new THREE.Color(0.55, 0.62, 0.72);
+// Cielo con degradé: claro en el horizonte y más azul arriba, como el del horneado. Antes era un color liso. ?cielo=0 lo saca.
+if (Q.get('cielo') !== '0') scene.backgroundNode = mix(vec3(0.74, 0.82, 0.93), vec3(0.24, 0.43, 0.86), normalWorldGeometry.y.max(0).pow(0.5));   // la esfera del fondo se ve por dentro: normalWorld viene dada vuelta
+// El sol para lo que no se horneó (vecinos y terreno). Se pisa con el de config.json cuando llega.
+const solExterior = uniform(new THREE.Vector3(0.8, 0.3, 0.45).normalize());
+const solFuerza = uniform(40);      // fuerza del sol de config.json (la misma unidad que en Blender)
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 300);
 camera.rotation.order = 'YXZ';
 
@@ -168,12 +174,26 @@ horneada = base = mapas = null;     // la geometría original (ya copiada a deci
 // Lo que no se horneó: emisores, vidrio, contexto exterior y espejos
 const emisor = (o, f) => { const c = (o.material.emissive && o.material.emissive.getHex() ? o.material.emissive : o.material.color).clone().multiplyScalar(f); o.material = new THREE.MeshBasicMaterial({ color: c, map: o.material.emissiveMap || o.material.map || null }); };
 const plano = (o, f) => { o.material = new THREE.MeshBasicMaterial({ color: o.material.color.clone().multiplyScalar(f), map: o.material.map || null, side: o.material.side }); };
-const espejos = [];
+// Vecinos y terreno: no están horneados y antes iban con un color liso, que detrás del patio se veía como una mancha beige
+// (Juane, 18/11). Ahora reciben el sol y el cielo según hacia dónde mira cada cara, y los muros llevan una variación suave
+// de revoque para que no sean un plano perfecto. ?exterior=0 vuelve al color liso.
+const exterior = (o, muro) => {
+  if (Q.get('exterior') === '0') return plano(o, 0.55);
+  const m = new THREE.MeshBasicNodeMaterial(); m.side = o.material.side;
+  const c = o.material.color, gris = (c.r + c.g + c.b) / 3;
+  const base = muro ? vec3(c.r * 0.6 + gris * 0.4, c.g * 0.6 + gris * 0.4, c.b * 0.6 + gris * 0.4) : vec3(c.r, c.g, c.b);
+  const n = normalWorldGeometry;
+  const luz = n.dot(solExterior).max(0).mul(1.1).add(n.y.mul(0.12).add(0.34));       // sol directo + cielo (algo más desde arriba)
+  const revoque = muro ? mx_noise_float(positionWorld.mul(0.45)).mul(0.07).add(mx_noise_float(positionWorld.mul(vec3(3, 0.6, 3))).mul(0.04)).add(1) : float(1);
+  m.colorNode = base.mul(luz).mul(revoque); o.material = m;
+};
+const espejos = [], reflectores = [];
+const ALTO_PERSONA = +(Q.get('alto') ?? 1.74), OJOS_PERSONA = ALTO_PERSONA * 0.935;
 raiz.traverse((o) => {
   if (!o.isMesh || o.userData.horneada) return;
   const k = o.name.split('|')[1] || o.name;
   if (k === 'led') emisor(o, 9); else if (k === 'lightEmit') emisor(o, 6);   // las mismas fuerzas de emisión que en Blender
-  else if (k === 'ground' || k === 'neighbor') plano(o, 0.55);
+  else if (k === 'ground' || k === 'neighbor') exterior(o, k === 'neighbor');
   else if (k === 'roof') { o.material = o.material.clone(); o.material.side = THREE.BackSide; plano(o, 0.5); }
   else if (k.startsWith('mirror')) espejos.push(o);
 });
@@ -181,6 +201,7 @@ for (const o of espejos) {
   o.geometry.computeBoundingBox(); const centro = o.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(o.matrixWorld);
   const n = new THREE.Vector3().fromBufferAttribute(o.geometry.attributes.normal, 0).transformDirection(o.matrixWorld);
   const r = reflector({ resolutionScale: 1, samples: +(Q.get('muestras') ?? 4), bounces: Q.get('rebotes') === '1' });
+  reflectores.push(r);
   r.target.position.copy(centro).addScaledVector(n, 0.004); r.target.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n); scene.add(r.target); r.target.updateMatrixWorld(true);
   (window.infoEspejos = window.infoEspejos || []).push(o.name + ' n=' + n.toArray().map((v) => v.toFixed(2)) + ' c=' + centro.toArray().map((v) => v.toFixed(2)));
   const m = new THREE.MeshBasicNodeMaterial(); m.colorNode = r.rgb.mul(0.92); o.material = m;
@@ -269,6 +290,7 @@ function armarCampo(cfg) {
   const afuera = sol.clone().multiplyScalar(eSol).add(new THREE.Vector3(0, eCielo * 2 / 3, 0)).divideScalar(eSol + eCielo);
   const techo = porNombre.get('ceil|roof');
   const caja = techo ? new THREE.Box3().setFromObject(techo) : new THREE.Box3().setFromPoints(luces.map((l) => new THREE.Vector3(l[0], l[1], l[2]))).expandByScalar(2);
+  cajaTecho = caja;
   const adentro = (x, y, z) => x > caja.min.x && x < caja.max.x && z > caja.min.z && z < caja.max.z && y < caja.max.y;
   const borde = 1.2, min = new THREE.Vector3(caja.min.x - borde, Math.min(0, caja.min.y) - borde, caja.min.z - borde);
   const tam = new THREE.Vector3(caja.max.x + borde, caja.max.y + borde, caja.max.z + borde).sub(min);
@@ -297,7 +319,7 @@ function armarCampo(cfg) {
   return { tex, min, tam, info: { luces: nL, celda: +celda.toFixed(2), grilla: [nx, ny, nz], adentro: nAdentro, ms: Math.round(performance.now() - t0), techo: !!techo } };
 }
 let campo = null;
-{ try { campo = armarCampo(await (await fetch(conV(ARCH.luces))).json()); } catch (e) { console.warn('Relieve: no se pudo leer config.json; se usa luz desde arriba', e); } }
+{ try { const cfg = await (await fetch(conV(ARCH.luces))).json(); if (cfg.sol) { solExterior.value.set(...cfg.sol.dir).normalize(); solFuerza.value = cfg.sol.fuerza; } else solFuerza.value = 0; campo = armarCampo(cfg); } catch (e) { console.warn('Relieve: no se pudo leer config.json; se usa luz desde arriba', e); } }
 window.campoLuz = campo ? campo.info : 'sin config.json: luz desde arriba';
 // Cuánto cambia la luz horneada por el relieve, en cada punto. Ng: la superficie lisa; normalWorld: con el relieve.
 // La dirección se lee 30 cm hacia afuera de la superficie, para no mezclar la luz de los dos lados de una pared.
@@ -314,6 +336,38 @@ const brilloLuces = () => {
   const Lv = cameraViewMatrix.mul(vec4(Lw, 0)).xyz.normalize();
   const spec = BRDF_GGX({ lightDirection: Lv, f0: vec3(0.04), f90: float(1), roughness: materialRoughness.clamp(0.4, 1) });
   return spec.mul(normalWorld.dot(Lw).max(0)).mul(d).div(ng.dot(Lw).max(0.3)).mul(Math.PI).mul(uKS);
+};
+// Brillo del sol: donde el sol pega en el piso, mirando hacia la vidriera el piso se ve más claro (el reflejo rasante del
+// sol, que la luz horneada no trae porque es solo la parte mate). Medido el 18/11 contra la foto 360 desde el mismo punto:
+// las sombras eran igual de nítidas, lo que faltaba era este brillo (la mancha de sol salía 30 a 50 % más oscura).
+// Dónde pega el sol se saca de la propia luz horneada: en el piso, por encima de SOL_DESDE solo llega con sol directo
+// (adentro, sin sol, ronda 3,4 a 4,3; con sol, 6 a 7,5). Solo en caras que miran hacia arriba. ?ksol=0 lo apaga.
+const VER = Q.get('ver');
+const KSOL = +(Q.get('ksol') ?? 1), SOL_DESDE = +(Q.get('solDesde') ?? 4.9), VIDRIO_SOL = 0.84;
+const copiasLuz = new Map();
+const brilloSol = (m) => {
+  if (!cajaTecho) return vec3(0);
+  const Lv = cameraViewMatrix.mul(vec4(solExterior, 0)).xyz.normalize();
+  const spec = BRDF_GGX({ lightDirection: Lv, f0: vec3(0.04), f90: float(1), roughness: materialRoughness.clamp(0.4, 1) });
+  let copia = copiasLuz.get(m.lightMap);
+  if (copia === undefined) {
+    try {
+      const lado = TACTIL ? 512 : 1024, lienzo = document.createElement('canvas'); lienzo.width = lienzo.height = lado;
+      lienzo.getContext('2d').drawImage(m.lightMap.image, 0, 0, lado, lado);
+      copia = new THREE.CanvasTexture(lienzo); copia.colorSpace = m.lightMap.colorSpace; copia.flipY = m.lightMap.flipY; copia.channel = m.lightMap.channel;
+      copia.generateMipmaps = false; copia.minFilter = copia.magFilter = THREE.LinearFilter;
+    } catch (e) { console.warn('Brillo del sol: no se pudo copiar la luz horneada', e); copia = null; }
+    copiasLuz.set(m.lightMap, copia);
+  }
+  if (!copia) return vec3(0);
+  const luz = texture(copia, uv(copia.channel)).r.div(man.codificacion);
+  const alSol = smoothstep(SOL_DESDE, SOL_DESDE + 1.1, luz).mul(smoothstep(0.6, 0.9, NG.y));
+  if (VER === 'sol') return vec3(spec.x.clamp(0, 1), alSol, luz.div(10));       // para depurar: rojo = brillo, verde = dónde hay sol, azul = luz horneada
+  // se suma al color, que después se multiplica por la luz horneada: por eso se divide por ella
+  const brillo = spec.clamp(0, 12).mul(normalWorld.dot(solExterior).max(0)).mul(solFuerza.mul(VIDRIO_SOL)).div(luz.max(1)).mul(alSol).mul(KSOL);
+  // Solo bajo techo: es donde hace falta (las manchas de sol que entran por la vidriera).
+  const t = cajaTecho, bajoTecho = positionWorld.x.greaterThan(t.min.x).and(positionWorld.x.lessThan(t.max.x)).and(positionWorld.z.greaterThan(t.min.z)).and(positionWorld.z.lessThan(t.max.z));
+  return select(bajoTecho, brillo, vec3(0));
 };
 // Cada piso según su rugosidad real: los ásperos (la goma, 0,9 a 1) no reflejan la sala, tienen solo el brillo suave
 // de las luces del paso 1; los lisos (madera 0,5, porcelanato 0,42) muestran el reflejo. En el medio se mezclan.
@@ -367,7 +421,6 @@ const conBrillo = (m, esPared) => {
 };
 // ?ver=relieve muestra el factor de relieve en gris (gris medio = sin cambio); ?ver=luz, la dirección de la luz como color;
 // ?ver=reflejo, solo el reflejo del piso, sin Fresnel.
-const VER = Q.get('ver');
 const ponerAmbiente = () => {
   const visto = new Set(); let nRelieve = 0, nPisos = 0;
   scene.traverse((o) => {
@@ -381,7 +434,9 @@ const ponerAmbiente = () => {
       if (goma) c = c.add(brilloLuces().mul(BRILLO_GOMA));
       else if (piso) { m.emissiveNode = reflejoNodo(); nPisos++; if (VER === 'reflejo') c = vec3(0); else c = c.add(brilloLuces().mul(LISURA.oneMinus())); }
       else c = c.add(brilloLuces());
+      if (KSOL > 0 && /^piso/.test(man.objetos[o.name] || '')) c = c.add(brilloSol(m));      // solo los pisos de la sala (atlas piso)
       m.colorNode = vec4(c, materialColor.a);
+      if (VER === 'sol' && /^piso/.test(man.objetos[o.name] || '')) { m.colorNode = vec4(0, 0, 0, materialColor.a); m.emissiveNode = brilloSol(m); }
       if (VER === 'luz' || (VER === 'relieve' && relieve)) { m.colorNode = vec4(0, 0, 0, materialColor.a); m.emissiveNode = VER === 'luz' ? DLUZ.mul(0.5).add(0.5) : vec3(factorRelieve().mul(0.5)); }
     }
     else { m.envMap = cuboRT.texture; m.envMapIntensity = 1; }
@@ -396,6 +451,44 @@ const pieza = (g, m, y) => { const p = new THREE.Mesh(g, m); p.position.y = y; a
 pieza(new THREE.SphereGeometry(0.105, 24, 16), piel, 0); pieza(new THREE.CapsuleGeometry(0.17, 0.42, 8, 16), ropa, -0.52); pieza(new THREE.CapsuleGeometry(0.075, 0.62, 6, 12), pant, -1.2).position.x = -0.1; pieza(new THREE.CapsuleGeometry(0.075, 0.62, 6, 12), pant, -1.2).position.x = 0.1;
 pieza(new THREE.CapsuleGeometry(0.05, 0.5, 6, 12), ropa, -0.55).position.x = -0.26; pieza(new THREE.CapsuleGeometry(0.05, 0.5, 6, 12), ropa, -0.55).position.x = 0.26;
 if (Q.get('avatar') !== '0') scene.add(avatar);
+
+// ---------- modelos de terceros, protegidos ----------
+// Los modelos comprados no se publican como .glb: van en un formato propio y cifrado (.bsm) que arma
+// scripts/sitio-web/proteger_modelo.mjs. La frase tiene que ser la misma que la de ese script.
+const FRASE_MODELOS = ['recorridos', '3d', 'modelos', 'de', 'terceros', '2026'].join('·');
+async function cargarModelo(url) {
+  if (!/\.bsm(\?|$)/.test(url)) return gl.loadAsync(url);
+  const r = await fetch(url); if (!r.ok) throw new Error('No se pudo bajar ' + url + ' (' + r.status + ')');
+  const b = new Uint8Array(await r.arrayBuffer());
+  if (String.fromCharCode(b[0], b[1], b[2], b[3]) !== 'BSM1') throw new Error('Modelo protegido con formato desconocido');
+  const k = await crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', new TextEncoder().encode(FRASE_MODELOS)), 'AES-GCM', false, ['decrypt']);
+  return gl.parseAsync(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b.slice(4, 16) }, k, b.slice(16)), '');
+}
+// ---------- persona en los espejos ----------
+// Un modelo con esqueleto (persona.glb, o persona.bsm si es comprado; con animaciones de quieto y de caminar) reemplaza a la figura simple.
+// Va en la capa 1: la cámara principal no lo dibuja (estaría adentro de la cabeza) y las cámaras de los espejos sí.
+// Si el archivo no está o falla, queda la figura simple. ?persona=0 la saca.
+const LUZ_PERSONA = +(Q.get('luzPersona') ?? 1.6);
+let persona = null, mezclador = null, aQuieto = null, aCaminar = null, andar = 0;
+const xAntes = new THREE.Vector3(); let xListo = false;
+if (ARCH.persona && Q.get('avatar') !== '0' && Q.get('persona') !== '0') {
+  cargarModelo(conV(ARCH.persona)).then((g) => {
+    const m = g.scene; m.updateMatrixWorld(true);
+    const caja = new THREE.Box3().setFromObject(m), alto = caja.max.y - caja.min.y;
+    m.scale.multiplyScalar(ALTO_PERSONA / alto);                       // ojos a la altura de la cámara
+    m.traverse((o) => { o.layers.set(1); if (o.isMesh) o.frustumCulled = false; });
+    const busca = (re) => g.animations.find((c) => re.test(c.name));
+    mezclador = new THREE.AnimationMixer(m);
+    const cq = busca(/idle|quieto|stand/i), cc = busca(/walk|camin/i);
+    if (cq) { aQuieto = mezclador.clipAction(cq); aQuieto.play(); }
+    if (cc) { aCaminar = mezclador.clipAction(cc); aCaminar.play(); aCaminar.setEffectiveWeight(0); }
+    // Sin luces en la escena (la luz está horneada), la persona se ilumina con el ambiente capturado del salón.
+    m.traverse((o) => { if (!o.isMesh) return; for (const mt of [].concat(o.material)) { mt.envMap = cuboRT.texture; mt.envMapIntensity = LUZ_PERSONA; if (mt.metalness > 0.3) mt.metalness = 0.3; mt.needsUpdate = true; } });
+    persona = m; scene.add(m); scene.remove(avatar);
+    for (const r of reflectores) r.reflector.getVirtualCamera(camera).layers.enable(1);
+    window.persona = { alto: +alto.toFixed(2), animaciones: g.animations.map((c) => c.name) };
+  }).catch((e) => { window.persona = { error: String(e).slice(0, 120) }; });
+}
 
 // ---------- caminata ----------
 let yaw = Math.PI / 2, pitch = 0, altura = 1.6;
@@ -413,7 +506,7 @@ const alternarPanel = () => { const oculto = panel.style.display !== 'none'; pan
 menu.onclick = alternarPanel;
 const k0In = document.getElementById('k0'), k0Txt = document.getElementById('k0Txt'), expoIn = document.getElementById('expo'), expoTxt = document.getElementById('expoTxt');
 const relIn = document.getElementById('rel'), relTxt = document.getElementById('relTxt'), ksIn = document.getElementById('ks'), ksTxt = document.getElementById('ksTxt'), kpIn = document.getElementById('kp'), kpTxt = document.getElementById('kpTxt');
-k0In.value = K0base; expoIn.value = renderer.toneMappingExposure; relIn.value = RELIEVE; ksIn.value = KS; kpIn.value = KPARED;
+k0In.value = K0base; expoIn.value = expoBase; relIn.value = RELIEVE; ksIn.value = KS; kpIn.value = KPARED;
 const verValores = () => { k0Txt.textContent = (+k0In.value).toFixed(3); expoTxt.textContent = (+expoIn.value).toFixed(2); relTxt.textContent = (+relIn.value).toFixed(1); ksTxt.textContent = (+ksIn.value).toFixed(1); kpTxt.textContent = (+kpIn.value).toFixed(1); };
 kpIn.oninput = () => { uKP.value = +kpIn.value; verValores(); };
 ksIn.oninput = () => { uKS.value = +ksIn.value; verValores(); };
@@ -421,7 +514,7 @@ const refIn = document.getElementById('ref'), refTxt = document.getElementById('
 refIn.value = REFLEJO; bloIn.value = RESPLANDOR; refIn.disabled = !reflejoRT; bloIn.disabled = !resplandor;
 const verValores2 = () => { refTxt.textContent = reflejoRT ? (+refIn.value).toFixed(1) : 'apagado'; bloTxt.textContent = resplandor ? (+bloIn.value).toFixed(2) : 'apagado'; };
 refIn.oninput = () => { uReflejo.value = +refIn.value; verValores2(); }; bloIn.oninput = () => { resplandor.strength.value = +bloIn.value; verValores2(); }; verValores2();
-k0In.oninput = () => { uK0.value = +k0In.value; verValores(); }; expoIn.oninput = () => { renderer.toneMappingExposure = +expoIn.value; verValores(); };
+k0In.oninput = () => { uK0.value = +k0In.value; verValores(); }; expoIn.oninput = () => { expoBase = +expoIn.value; renderer.toneMappingExposure = expoBase * expoFactor; verValores(); };
 relIn.oninput = () => { uRelieve.value = +relIn.value; verValores(); }; verValores();
 // Palanca táctil: adelante y atrás, y también hacia los costados
 const palanca = { x: 0, y: 0 }, joy = document.getElementById('joy'), joyP = document.getElementById('joyP');
@@ -452,6 +545,12 @@ addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; cam
 let antes = performance.now(), cuadros = 0, tFps = antes, fps = 0, ambienteListo = false;
 renderer.setAnimationLoop((ahora) => {
   const dt = Math.min(0.05, (ahora - antes) / 1000); antes = ahora;
+  if (cajaTecho && EXPO_AFUERA !== 1) {
+    const bajoTecho = pos.x > cajaTecho.min.x && pos.x < cajaTecho.max.x && pos.z > cajaTecho.min.z && pos.z < cajaTecho.max.z;
+    const meta = bajoTecho ? 1 : EXPO_AFUERA;
+    expoFactor = expoLista ? expoFactor + (meta - expoFactor) * Math.min(1, dt * 2.2) : meta; expoLista = true;      // el primer cuadro arranca ya adaptado
+    renderer.toneMappingExposure = expoBase * expoFactor;
+  }
   if (teclas.has('ArrowLeft')) yaw += 1.6 * dt;
   if (teclas.has('ArrowRight')) yaw -= 1.6 * dt;
   let av = -palanca.y, lat = palanca.x;
@@ -469,6 +568,16 @@ renderer.setAnimationLoop((ahora) => {
   }
   pos.y = altura; camera.position.copy(pos); camera.rotation.set(pitch, yaw, 0);
   avatar.position.copy(pos); avatar.rotation.y = yaw;
+  if (persona) {
+    persona.position.set(pos.x, pos.y - OJOS_PERSONA, pos.z); persona.rotation.y = yaw + Math.PI;      // el modelo mira hacia +Z; la cámara, hacia −Z
+    if (!xListo) { xAntes.copy(pos); xListo = true; }
+    const vel = Math.hypot(pos.x - xAntes.x, pos.z - xAntes.z) / Math.max(dt, 1e-3); xAntes.copy(pos);
+    andar += (Math.min(1, vel / 1.2) - andar) * Math.min(1, dt * 8);
+    if (Q.get('andar')) andar = +Q.get('andar');                                                      // ?andar=1: caminando fijo, para capturas                                   // pasa suave de quieto a caminar
+    if (aCaminar) { aCaminar.setEffectiveWeight(andar); aCaminar.timeScale = 0.6 + 0.6 * Math.min(1.6, vel / 2.2); }
+    if (aQuieto) aQuieto.setEffectiveWeight(1 - andar);
+    mezclador.update(dt);
+  }
   if (!ambienteListo) { avatar.visible = false; cubo.update(renderer, scene); avatar.visible = true; ponerAmbiente(); ambienteListo = true; }
   dibujar();
   cuadros++;
